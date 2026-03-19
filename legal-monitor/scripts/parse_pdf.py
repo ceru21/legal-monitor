@@ -122,10 +122,11 @@ def extract_column_fields(page, record_text: str, radicado: str, next_radicado_t
             break
 
     segment = [w for w in words if start_top <= w['top'] < end_top]
-    act_words = [w for w in segment if w['top'] < rad_top]
-    clase_words = [w for w in segment if X_CLASS_MIN <= w['x0'] < X_DEMANDANTE_MIN and w['top'] >= rad_top]
-    demandante_words = [w for w in segment if X_DEMANDANTE_MIN <= w['x0'] < X_DEMANDADO_MIN and w['top'] >= rad_top]
-    demandado_words = [w for w in segment if X_DEMANDADO_MIN <= w['x0'] < X_DESC_MIN and w['top'] >= rad_top]
+    line_tol = 3.0
+    act_words = [w for w in segment if w['top'] < rad_top - line_tol]
+    clase_words = [w for w in segment if X_CLASS_MIN <= w['x0'] < X_DEMANDANTE_MIN and w['top'] >= rad_top - line_tol]
+    demandante_words = [w for w in segment if X_DEMANDANTE_MIN <= w['x0'] < X_DEMANDADO_MIN and w['top'] >= rad_top - line_tol]
+    demandado_words = [w for w in segment if X_DEMANDADO_MIN <= w['x0'] < X_DESC_MIN and w['top'] >= rad_top - line_tol]
 
     return {
         'actuacion': join_words(act_words),
@@ -144,6 +145,41 @@ def infer_tipo_proceso(record_text: str, radicado: str, fecha: str | None) -> st
         if normalize_text(clase) in norm:
             return clase
     return None
+
+
+def needs_manual_review(demandante: str | None, demandado: str | None, tipo_proceso: str | None, actuacion: str | None) -> str:
+    if not demandante or not demandado or not tipo_proceso or not actuacion:
+        return "Si"
+
+    def tokens(text: str) -> list[str]:
+        return text.replace('\n', ' ').split()
+
+    def looks_like_short_acronym(text: str) -> bool:
+        clean = text.replace('.', '').replace('\n', ' ').strip()
+        return ' ' not in clean and clean.isupper() and len(clean) <= 6
+
+    tipo_norm = normalize_text(tipo_proceso)
+    if not any(normalize_text(clase) in tipo_norm or tipo_norm in normalize_text(clase) for clase in COMMON_CLASSES):
+        return "Si"
+
+    if not normalize_text(actuacion).startswith('auto'):
+        return "Si"
+
+    demandante_tokens = tokens(demandante)
+    demandado_tokens = tokens(demandado)
+
+    if len(demandante_tokens) < 2 and not looks_like_short_acronym(demandante):
+        return "Si"
+    if len(demandado_tokens) < 2 and not looks_like_short_acronym(demandado):
+        return "Si"
+
+    if demandante.count('\n') > 3 or demandado.count('\n') > 4:
+        return "Si"
+
+    if '...' in demandante or '...' in demandado:
+        return "Si"
+
+    return "No"
 
 
 def parse_pdf(pdf_path: str | Path) -> list[ParsedRow]:
@@ -174,6 +210,9 @@ def parse_pdf(pdf_path: str | Path) -> list[ParsedRow]:
                 fields = extract_column_fields(page, record, radicado, next_radicado_top) if radicado else {}
                 actuacion = fields.get('actuacion') or (infer_actuacion(record, radicado) if radicado else None)
                 tipo_proceso = fields.get('tipo_proceso_raw') or (infer_tipo_proceso(record, radicado, fecha) if radicado else None)
+                demandante = fields.get('demandante')
+                demandado = fields.get('demandado')
+                revision_manual = needs_manual_review(demandante, demandado, tipo_proceso, actuacion)
                 rows.append(
                     ParsedRow(
                         pdf_fingerprint=fingerprint,
@@ -183,10 +222,11 @@ def parse_pdf(pdf_path: str | Path) -> list[ParsedRow]:
                         texto_fila_original=record,
                         radicado_raw=radicado,
                         radicado_normalizado=radicado,
-                        demandante=fields.get('demandante'),
-                        demandado=fields.get('demandado'),
+                        demandante=demandante,
+                        demandado=demandado,
                         tipo_proceso=tipo_proceso,
                         actuacion=actuacion,
+                        revision_manual=revision_manual,
                         parse_mode="text",
                         parse_confidence=0.8 if radicado else 0.25,
                     )
