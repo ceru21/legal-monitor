@@ -36,22 +36,22 @@ Validar de extremo a extremo que el sistema puede:
 ### Fase A — Descubrimiento del portal
 
 #### A1. Documentar contrato real del portal
-- [ ] Abrir portal con navegador automatizado y DevTools
-- [ ] Documentar orden exacto de filtros
-- [ ] Identificar selectores robustos
-- [ ] Confirmar si los dropdowns son AJAX/dependientes
-- [ ] Confirmar cómo aparece el link al PDF
-- [ ] Confirmar si hay paginación del portal
-- [ ] Guardar hallazgos en `references/portal-contract.md`
+- [x] Abrir portal por inspección HTTP/HTML
+- [x] Documentar orden exacto de filtros
+- [x] Identificar selectores robustos
+- [x] Confirmar si los dropdowns son AJAX/dependientes
+- [x] Confirmar cómo aparece el link al PDF
+- [x] Confirmar si hay paginación del portal
+- [x] Guardar hallazgos en `references/portal-contract.md`
 
 **Definition of Done**
 - Existe `references/portal-contract.md`
 - Tiene selectores, flujo, edge cases y ejemplo de resultado
 
 #### A2. Descubrir despachos disponibles
-- [ ] Obtener lista completa de despachos para Antioquia / Medellín / Juzgado de Circuito / Civil
-- [ ] Guardar lista canonizada en JSON de referencia temporal
-- [ ] Validar que los nombres sean reutilizables por el scraper
+- [x] Obtener lista completa de despachos para Antioquia / Medellín / Juzgado de Circuito / Civil
+- [x] Guardar lista canonizada en JSON de referencia temporal
+- [x] Validar que los nombres sean reutilizables por el scraper
 
 **Definition of Done**
 - Existe una lista de despachos resoluble por nombre normalizado
@@ -247,3 +247,4 @@ El sprint se considera exitoso si, para al menos 1 despacho real:
 - No meter OCR salvo que sea estrictamente necesario
 - No escalar a multi-ciudad en este sprint
 - Si el portal rompe selectores, actualizar primero `references/portal-contract.md`
+ontract.md`
