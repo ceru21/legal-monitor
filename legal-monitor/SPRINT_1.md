@@ -116,10 +116,10 @@ Validar de extremo a extremo que el sistema puede:
 ### Fase D — Parser inicial
 
 #### D1. Parser por tablas
-- [ ] Implementar `scripts/parse_pdf.py`
+- [x] Implementar `scripts/parse_pdf.py`
 - [ ] Intentar `pdfplumber.extract_tables()`
-- [ ] Normalizar filas extraídas
-- [ ] Conservar `raw_columns` y `texto_fila_original`
+- [x] Normalizar filas extraídas
+- [x] Conservar `raw_columns` y `texto_fila_original`
 
 **Definition of Done**
 - El parser devuelve filas parseadas para al menos 1 PDF real
@@ -154,10 +154,10 @@ Validar de extremo a extremo que el sistema puede:
 - Los patrones están definidos en YAML y cargan sin error
 
 #### E2. Implementar matcher
-- [ ] Implementar `scripts/matcher.py`
-- [ ] Normalizar texto
-- [ ] Aplicar exact/contains/regex/fuzzy
-- [ ] Devolver `accepted/review/rejected`
+- [x] Implementar `scripts/matcher.py`
+- [x] Normalizar texto
+- [x] Aplicar exact/contains/regex/fuzzy
+- [x] Devolver `accepted/review/rejected`
 
 **Definition of Done**
 - Ejemplos positivos y negativos básicos se clasifican correctamente
