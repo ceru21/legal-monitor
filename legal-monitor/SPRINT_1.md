@@ -94,8 +94,8 @@ Validar de extremo a extremo que el sistema puede:
 - El script consulta 1 despacho y retorna publicaciones estructuradas
 
 #### C2. Extracción de publicaciones
-- [ ] Leer la lista de resultados
-- [ ] Extraer título, fecha, URL intermedia y/o PDF URL
+- [x] Leer la lista de resultados
+- [x] Extraer título, fecha, URL intermedia y/o PDF URL
 - [ ] Manejar cero resultados sin fallar
 - [ ] Manejar paginación del portal si existe
 
@@ -247,4 +247,6 @@ El sprint se considera exitoso si, para al menos 1 despacho real:
 - No meter OCR salvo que sea estrictamente necesario
 - No escalar a multi-ciudad en este sprint
 - Si el portal rompe selectores, actualizar primero `references/portal-contract.md`
+ontract.md`
+d`
 ontract.md`
