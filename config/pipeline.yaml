@@ -1,0 +1,22 @@
+filters:
+  departamento: Antioquia
+  municipio: Medellin
+  entidad: Juzgado de Circuito
+  especialidad: Civil
+
+runtime:
+  headless: true
+  timeout_ms: 30000
+  retry_attempts: 3
+  throttle_ms: 1200
+  timezone: America/Bogota
+
+matching:
+  fuzzy_threshold_accept: 0.90
+  fuzzy_threshold_review: 0.80
+
+output:
+  save_raw_pdf: true
+  save_parsed_json: true
+  export_csv: true
+  export_json: true

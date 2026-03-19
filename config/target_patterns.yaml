@@ -1,0 +1,33 @@
+process_type_patterns:
+  - id: verbal
+    terms:
+      - verbal
+      - verbal sumario
+
+actuacion_patterns:
+  - id: admite_demanda
+    terms:
+      - auto admite
+      - auto admite demanda
+      - admite demanda
+
+  - id: mandamiento
+    terms:
+      - auto libra mandamiento
+      - libra mandamiento
+      - libra mandamiento de pago
+      - mandamiento de pago
+
+rules:
+  - id: verbal_admitido
+    any_process_type:
+      - verbal
+      - verbal sumario
+    any_actuacion:
+      - auto admite
+      - auto admite demanda
+
+  - id: ejecutivo_mandamiento
+    any_actuacion:
+      - auto libra mandamiento
+      - libra mandamiento de pago
