@@ -46,6 +46,7 @@ def decide(row: dict) -> MatchDecision:
     actuacion = row.get("actuacion") or ""
     full_text = " ".join([tipo, actuacion, row.get("texto_fila_original") or ""])
     norm_full = normalize_text(full_text)
+    revision_manual = (row.get("revision_manual") or "No").lower() == "si"
 
     for negative in NEGATIVE_HINTS:
         if normalize_text(negative) in norm_full:
@@ -74,7 +75,10 @@ def decide(row: dict) -> MatchDecision:
             act_match = key
             act_conf = score
 
-    if process_conf >= 0.95 and act_conf >= 0.95:
+    if revision_manual and (process_conf >= 0.95 or act_conf >= 0.95):
+        decision = "review"
+        reason = "manual_review_required"
+    elif process_conf >= 0.95 and act_conf >= 0.95:
         decision = "accepted"
         reason = "strong_process_and_actuacion"
     elif process_conf >= 0.95 or act_conf >= 0.95:

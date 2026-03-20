@@ -122,7 +122,7 @@ Validar de extremo a extremo que el sistema puede:
 - [x] Conservar `raw_columns` y `texto_fila_original`
 
 **Definition of Done**
-- El parser devuelve filas parseadas para al menos 1 PDF real
+- [x] El parser devuelve filas parseadas para al menos 1 PDF real
 
 #### D2. Fallback por texto
 - [ ] Extraer texto por página cuando no haya tabla utilizable
@@ -146,9 +146,9 @@ Validar de extremo a extremo que el sistema puede:
 ### Fase E — Matching inicial
 
 #### E1. Configurar patrones
-- [ ] Completar `config/target_patterns.yaml`
-- [ ] Separar `process_type_patterns` y `actuacion_patterns`
-- [ ] Agregar reglas iniciales de negocio
+- [x] Completar `config/target_patterns.yaml`
+- [x] Separar `process_type_patterns` y `actuacion_patterns`
+- [x] Agregar reglas iniciales de negocio
 
 **Definition of Done**
 - Los patrones están definidos en YAML y cargan sin error
@@ -160,7 +160,7 @@ Validar de extremo a extremo que el sistema puede:
 - [x] Devolver `accepted/review/rejected`
 
 **Definition of Done**
-- Ejemplos positivos y negativos básicos se clasifican correctamente
+- [x] Ejemplos positivos y negativos básicos se clasifican correctamente
 
 ---
 
