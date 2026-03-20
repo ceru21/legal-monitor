@@ -4,8 +4,13 @@ import argparse
 import json
 import re
 from pathlib import Path
+import sys
 
 import pdfplumber
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from models import ParsedRow
 from utils import normalize_text, sha256_file, write_json

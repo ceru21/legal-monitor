@@ -4,6 +4,11 @@ import argparse
 import json
 from difflib import SequenceMatcher
 from pathlib import Path
+import sys
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from models import MatchDecision
 from utils import normalize_text, write_json
