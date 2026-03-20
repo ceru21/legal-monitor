@@ -5,10 +5,16 @@ import html
 import json
 import re
 from dataclasses import asdict
+from pathlib import Path
 from typing import Iterable
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse
+import sys
 
 import requests
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from models import DetailDocument, Publication
 from utils import normalize_text, write_json

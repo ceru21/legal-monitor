@@ -146,9 +146,9 @@ Validar de extremo a extremo que el sistema puede:
 ### Fase E — Matching inicial
 
 #### E1. Configurar patrones
-- [ ] Completar `config/target_patterns.yaml`
-- [ ] Separar `process_type_patterns` y `actuacion_patterns`
-- [ ] Agregar reglas iniciales de negocio
+- [x] Completar `config/target_patterns.yaml`
+- [x] Separar `process_type_patterns` y `actuacion_patterns`
+- [x] Agregar reglas iniciales de negocio
 
 **Definition of Done**
 - Los patrones están definidos en YAML y cargan sin error

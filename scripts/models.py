@@ -43,6 +43,7 @@ class ParsedRow:
     tipo_proceso: str | None = None
     actuacion: str | None = None
     anotacion: str | None = None
+    revision_manual: str = "No"
     parse_mode: str = "failed"
     parse_confidence: float = 0.0
 
