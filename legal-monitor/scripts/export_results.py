@@ -68,6 +68,11 @@ OPERATIVE_COLUMNS = [
     "revision_manual",
     "process_type_match",
     "actuacion_match",
+    "match_2023",
+    "email_2023",
+    "match_2025",
+    "email_2025",
+    "match_total",
 ]
 
 PDF_SUMMARY_COLUMNS = [

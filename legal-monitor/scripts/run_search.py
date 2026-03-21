@@ -12,6 +12,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from enrich_contacts import enrich_records
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
 from parse_pdf import parse_pdf
@@ -82,7 +83,14 @@ def merge_record_context(
     }
 
 
-def run_pipeline(fecha_inicio: str, fecha_fin: str, despacho_ids: list[str] | None, output_root: Path) -> dict[str, Any]:
+def run_pipeline(
+    fecha_inicio: str,
+    fecha_fin: str,
+    despacho_ids: list[str] | None,
+    output_root: Path,
+    enrich_file_2023: str | None = None,
+    enrich_file_2025: str | None = None,
+) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
     if despacho_ids:
@@ -170,12 +178,16 @@ def run_pipeline(fecha_inicio: str, fecha_fin: str, despacho_ids: list[str] | No
                     )
                 )
 
+    if enrich_file_2023 and enrich_file_2025:
+        records = enrich_records(records, enrich_file_2023, enrich_file_2025)
+
     metadata = {
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
         "despachos_total": len(selected),
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
+        "enrichment_enabled": bool(enrich_file_2023 and enrich_file_2025),
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -201,6 +213,8 @@ def cli() -> None:
     parser.add_argument("--fecha-fin", required=True)
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
+    parser.add_argument("--enrich-file-2023")
+    parser.add_argument("--enrich-file-2025")
     args = parser.parse_args()
 
     result = run_pipeline(
@@ -208,6 +222,8 @@ def cli() -> None:
         fecha_fin=args.fecha_fin,
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
+        enrich_file_2023=args.enrich_file_2023,
+        enrich_file_2025=args.enrich_file_2025,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
