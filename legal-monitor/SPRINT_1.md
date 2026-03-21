@@ -17,14 +17,14 @@ Validar de extremo a extremo que el sistema puede:
 - [x] Estructura base del proyecto creada
 - [x] Configuración inicial creada
 - [x] Lista de tareas del sprint definida
-- [ ] Descubrimiento técnico del portal completado
-- [ ] Canonización de despachos implementada
-- [ ] Scraper inicial implementado
-- [ ] Descarga real de PDFs funcionando
-- [ ] Parser inicial de PDFs funcionando
-- [ ] Matcher inicial funcionando
+- [x] Descubrimiento técnico del portal completado
+- [x] Canonización de despachos implementada
+- [x] Scraper inicial implementado
+- [x] Descarga real de PDFs funcionando
+- [x] Parser inicial de PDFs funcionando
+- [x] Matcher inicial funcionando
 - [ ] Orquestador `run_search.py` funcionando
-- [ ] Dataset mínimo de prueba reunido
+- [x] Dataset mínimo de prueba reunido
 - [ ] Ground truth inicial creado
 - [ ] Exportación CSV/JSON validada
 - [ ] Sprint demo listo
@@ -109,7 +109,8 @@ Validar de extremo a extremo que el sistema puede:
 - [ ] Evitar reprocesamiento del mismo archivo
 
 **Definition of Done**
-- Se descargan al menos 3 PDFs reales y quedan guardados localmente
+- [x] Se descargan al menos 3 PDFs reales y quedan guardados localmente
+- Validación más reciente: 14 PDFs principales descargados/parseados al recorrer los 22 despachos para `2026-03-18`
 
 ---
 
@@ -123,6 +124,7 @@ Validar de extremo a extremo que el sistema puede:
 
 **Definition of Done**
 - [x] El parser devuelve filas parseadas para al menos 1 PDF real
+- Validación actual del parser sobre el lote de `2026-03-18`: 180 filas extraídas, `revision_manual` reducido de 20 a 6
 
 #### D2. Fallback por texto
 - [ ] Extraer texto por página cuando no haya tabla utilizable
@@ -222,9 +224,9 @@ Validar de extremo a extremo que el sistema puede:
 
 ```bash
 python scripts/run_search.py \
-  --fecha-inicio 2026-03-01 \
+  --fecha-inicio 2026-03-18 \
   --fecha-fin 2026-03-18 \
-  --despacho "JUZGADO 001 CIVIL DEL CIRCUITO DE MEDELLIN"
+  --despacho-id 050013103012
 ```
 
 ---
@@ -247,6 +249,18 @@ El sprint se considera exitoso si, para al menos 1 despacho real:
 - No meter OCR salvo que sea estrictamente necesario
 - No escalar a multi-ciudad en este sprint
 - Si el portal rompe selectores, actualizar primero `references/portal-contract.md`
-ontract.md`
-d`
-ontract.md`
+
+## Corte de estado de esta pasada
+- Se recorrieron los 22 despachos civiles del circuito de Medellín para la fecha `2026-03-18`
+- 16 despachos tuvieron publicaciones y 14 PDFs principales fueron parseables con el selector actual
+- Hallazgos de layout que generaban ruido:
+  - pie de página incrustado en la última fila del PDF
+  - actuaciones válidas redactadas como texto resolutivo (`Aprobar...`, `Tutelar...`) en vez de empezar por `Auto`
+  - clases reales no contempladas todavía en la lista base (`Ordinario`, `Ejecutivo Singular`, `Reorganización Empresarial`)
+- Resultado del ajuste actual en `scripts/parse_pdf.py`:
+  - lote completo: `revision_manual` **20 → 6**
+  - Juzgado 003: **3 → 0**
+  - Juzgado 013: **4 → 1**
+  - Juzgado 021: **2 → 0**
+- Caso que sigue justificando revisión manual en el foco: Juzgado 013, fila con actuación truncada en `"a la Oficina de Apoyo Judicial para reparto."`
+e Apoyo Judicial para reparto."`

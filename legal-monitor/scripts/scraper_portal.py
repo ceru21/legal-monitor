@@ -155,6 +155,14 @@ class PortalClient:
             )
         return docs
 
+    def download_document(self, document_url: str, output_path: str | Path) -> Path:
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        response = self.session.get(document_url, timeout=60)
+        response.raise_for_status()
+        output_path.write_bytes(response.content)
+        return output_path
+
     @staticmethod
     def _is_primary_pdf(label: str) -> bool:
         norm = normalize_text(label)
