@@ -220,12 +220,15 @@ Correr todo como pipeline completo.
 5. exportar
 
 ### Estado
-**⏳ Pendiente**
+**✅ Hecha (versión inicial funcional)**
+
+### Ya logrado
+- `scripts/run_search.py` como entrada única
+- flujo: search → selección PDF → descarga → parse → match → export
+- artefactos de diagnóstico por corrida
 
 ### Falta
-- `run_search.py` o equivalente de orquestación final
-- ejecución completa desde una sola entrada
-- logs de corrida consolidados
+- endurecer logs y controles para operación diaria continua
 
 ---
 
@@ -294,5 +297,8 @@ Correr todo como pipeline completo.
 - `references/portal-contract.md`
 - `references/despachos_medellin_civil_circuito.json`
 - `scripts/scraper_portal.py`
+- `scripts/parse_pdf.py`
+- `scripts/matcher.py`
+py`
 - `scripts/parse_pdf.py`
 - `scripts/matcher.py`

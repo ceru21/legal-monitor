@@ -224,9 +224,9 @@ Validar de extremo a extremo que el sistema puede:
 
 ```bash
 python scripts/run_search.py \
-  --fecha-inicio 2026-03-01 \
+  --fecha-inicio 2026-03-18 \
   --fecha-fin 2026-03-18 \
-  --despacho "JUZGADO 001 CIVIL DEL CIRCUITO DE MEDELLIN"
+  --despacho-id 050013103012
 ```
 
 ---
@@ -263,3 +263,4 @@ El sprint se considera exitoso si, para al menos 1 despacho real:
   - Juzgado 013: **4 → 1**
   - Juzgado 021: **2 → 0**
 - Caso que sigue justificando revisión manual en el foco: Juzgado 013, fila con actuación truncada en `"a la Oficina de Apoyo Judicial para reparto."`
+e Apoyo Judicial para reparto."`
