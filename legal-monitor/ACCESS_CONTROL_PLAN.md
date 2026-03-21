@@ -252,6 +252,7 @@ La implementación debe construirse así:
 
 ## Primero
 - política del producto
+- primera barrera de acceso en OpenClaw/canal
 - roles
 - permisos
 
