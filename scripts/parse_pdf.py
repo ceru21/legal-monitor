@@ -27,11 +27,15 @@ X_FECHA_MIN = 775
 COMMON_CLASSES = [
     "Verbal sumario",
     "Verbal",
+    "Ordinario",
     "Ejecutivo con Título Hipotecario",
     "Ejecutivo con Titulo Hipotecario",
+    "Ejecutivo Singular",
     "Ejecutivo",
     "Insolvencia de Persona Natural",
     "Insolvencia",
+    "Reorganización Empresarial",
+    "Reorganizacion Empresarial",
     "Expropiación",
     "Expropiacion",
     "Exhortos",
@@ -41,16 +45,29 @@ COMMON_CLASSES = [
     "Reconocimiento de documentos",
 ]
 
+VALID_ACTUACION_PREFIXES = (
+    "auto",
+    "sentencia tutela",
+    "auto admite tutela",
+    "tutelar",
+    "aprobar",
+)
+
 
 def split_records(page_text: str) -> list[str]:
     raw_lines = [line.strip() for line in page_text.splitlines() if line.strip()]
     lines = []
-    for line in raw_lines:
+    for idx, line in enumerate(raw_lines):
         norm = normalize_text(line)
+        next_norm = normalize_text(raw_lines[idx + 1]) if idx + 1 < len(raw_lines) else ""
         if not norm:
             continue
         if norm.startswith("estado no.") or norm.startswith("fecha") or norm.startswith("no proceso clase de proceso"):
             continue
+        if norm.startswith("la fecha") or "se fija el presente estado" in norm:
+            break
+        if re.fullmatch(r"\d{4}", norm) and next_norm.startswith("la fecha"):
+            break
         if "de conformidad con lo previsto" in norm or "secretario" in norm:
             continue
         lines.append(line)
@@ -117,6 +134,30 @@ def join_words(words: list[dict]) -> str | None:
     return "\n".join(" ".join(line) for line in lines).strip()
 
 
+def detect_footer_top(words: list[dict]) -> float | None:
+    ordered_words = sorted(words, key=lambda w: (round(w['top'], 1), w['x0']))
+    lines: list[tuple[float, str]] = []
+    current_top = None
+    current_words: list[str] = []
+    for word in ordered_words:
+        top = round(word['top'], 1)
+        if current_top is None or abs(top - current_top) > 2.5:
+            if current_words:
+                lines.append((current_top, " ".join(current_words)))
+            current_top = top
+            current_words = [word['text']]
+        else:
+            current_words.append(word['text'])
+    if current_words:
+        lines.append((current_top, " ".join(current_words)))
+
+    for top, text in lines:
+        norm = normalize_text(text)
+        if norm.startswith("la fecha") or "se fija el presente estado" in norm:
+            return top
+    return None
+
+
 def extract_column_fields(page, record_text: str, radicado: str, next_radicado_top: float | None) -> dict:
     words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
     rad_word = next((w for w in words if w['text'] == radicado), None)
@@ -128,10 +169,13 @@ def extract_column_fields(page, record_text: str, radicado: str, next_radicado_t
     start_top = max((w['top'] for w in auto_candidates), default=rad_top)
 
     line_tol = 3.0
+    footer_top = detect_footer_top(words)
     later_auto_tops = sorted({w['top'] for w in words if w['text'].lower() == 'auto' and w['top'] > rad_top})
     end_top = (next_radicado_top - line_tol) if next_radicado_top is not None else float('inf')
+    if footer_top is not None:
+        end_top = min(end_top, footer_top - line_tol)
     for t in later_auto_tops:
-        if next_radicado_top is None or t < next_radicado_top - line_tol:
+        if (next_radicado_top is None or t < next_radicado_top - line_tol) and (footer_top is None or t < footer_top - line_tol):
             end_top = t
             break
 
@@ -141,12 +185,14 @@ def extract_column_fields(page, record_text: str, radicado: str, next_radicado_t
     clase_words = [w for w in segment if X_CLASS_MIN <= w['x0'] < X_DEMANDANTE_MIN and w['top'] >= rad_top - line_tol]
     demandante_words = [w for w in segment if X_DEMANDANTE_MIN <= w['x0'] < X_DEMANDADO_MIN and w['top'] >= rad_top - line_tol]
     demandado_words = [w for w in segment if X_DEMANDADO_MIN <= w['x0'] < X_DESC_MIN and w['top'] >= rad_top - line_tol]
+    descripcion_words = [w for w in segment if X_DESC_MIN <= w['x0'] < X_FECHA_MIN and w['top'] >= rad_top - line_tol]
 
     return {
         'actuacion': join_words(act_words),
         'tipo_proceso_raw': join_words(clase_words),
         'demandante': join_words(demandante_words),
         'demandado': join_words(demandado_words),
+        'descripcion_raw': join_words(descripcion_words),
     }
 
 
@@ -172,20 +218,24 @@ def needs_manual_review(demandante: str | None, demandado: str | None, tipo_proc
         clean = text.replace('.', '').replace('\n', ' ').strip()
         return ' ' not in clean and clean.isupper() and len(clean) <= 6
 
+    def looks_like_party_placeholder(text: str) -> bool:
+        norm = normalize_text(text)
+        return norm in {"indeterminados"}
+
     tipo_norm = normalize_text(tipo_proceso)
     if not any(normalize_text(clase) in tipo_norm or tipo_norm in normalize_text(clase) for clase in COMMON_CLASSES):
         return "Si"
 
     norm_act = normalize_text(actuacion)
-    if not (norm_act.startswith('auto') or norm_act.startswith('sentencia tutela')):
+    if not any(norm_act.startswith(prefix) for prefix in VALID_ACTUACION_PREFIXES):
         return "Si"
 
     demandante_tokens = tokens(demandante)
     demandado_tokens = tokens(demandado)
 
-    if len(demandante_tokens) < 2 and not looks_like_short_acronym(demandante):
+    if len(demandante_tokens) < 2 and not (looks_like_short_acronym(demandante) or looks_like_party_placeholder(demandante)):
         return "Si"
-    if len(demandado_tokens) < 2 and not looks_like_short_acronym(demandado):
+    if len(demandado_tokens) < 2 and not (looks_like_short_acronym(demandado) or looks_like_party_placeholder(demandado)):
         return "Si"
 
     if demandante.count('\n') > 3 or demandado.count('\n') > 4:
@@ -223,7 +273,10 @@ def parse_pdf(pdf_path: str | Path) -> list[ParsedRow]:
                     next_radicado_top = rad_top_map.get(next_radicado)
 
                 fields = extract_column_fields(page, record, radicado, next_radicado_top) if radicado else {}
+                descripcion_raw = fields.get('descripcion_raw')
                 actuacion = fields.get('actuacion') or (infer_actuacion(record, radicado) if radicado else None)
+                if not actuacion and descripcion_raw:
+                    actuacion = descripcion_raw.splitlines()[0].strip()
                 tipo_proceso = fields.get('tipo_proceso_raw') or (infer_tipo_proceso(record, radicado, fecha) if radicado else None)
                 demandante = fields.get('demandante')
                 demandado = fields.get('demandado')
