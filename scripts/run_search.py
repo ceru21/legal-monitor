@@ -4,9 +4,9 @@ import argparse
 import json
 import logging
 import re
-from datetime import datetime
-from pathlib import Path
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -29,6 +29,14 @@ logger = logging.getLogger("legal_monitor.run_search")
 
 REFERENCE_DESPACHOS = PROJECT_ROOT / "references" / "despachos_medellin_civil_circuito.json"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "runs"
+
+
+def valid_date(s: str) -> str:
+    try:
+        datetime.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Fecha invalida, use YYYY-MM-DD: {s!r}")
+    return s
 
 
 def sanitize_filename(value: str) -> str:
@@ -104,7 +112,8 @@ def run_pipeline(
     else:
         selected = scope
 
-    run_label = f"medellin_civil_circuito_{fecha_inicio}_a_{fecha_fin}_{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
+    run_ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_label = f"medellin_civil_circuito_{fecha_inicio}_a_{fecha_fin}_{run_ts}"
     run_dir = output_root / run_label
     pdf_dir = run_dir / "pdfs"
     export_dir = run_dir / "exports"
@@ -117,72 +126,106 @@ def run_pipeline(
     publications_total = 0
     pdfs_total = 0
 
+    logger.info("Iniciando corrida %s | %d despachos", run_label, len(selected))
+
     for despacho in selected:
         despacho_id = despacho["id"]
-        html_text = client.search_html(fecha_inicio, fecha_fin, id_despacho=despacho_id)
-        publications = client.extract_publications(html_text)
-        publications_total += len(publications)
-        publications_manifest.extend({"despacho_id": despacho_id, **publication.to_dict()} for publication in publications)
+        try:
+            logger.info("Despacho %s — buscando publicaciones", despacho_id)
+            html_text = client.search_html(fecha_inicio, fecha_fin, id_despacho=despacho_id)
+            publications = client.extract_publications(html_text)
+            publications_total += len(publications)
+            publications_manifest.extend({"despacho_id": despacho_id, **publication.to_dict()} for publication in publications)
 
-        if not publications:
-            diagnostics.append({"despacho_id": despacho_id, "despacho": despacho["nombre"], "status": "no_publications"})
-            continue
-
-        for publication in publications:
-            documents = client.fetch_detail_documents(publication.publication_url)
-            pdf_doc = choose_primary_document(documents)
-            selected_docs_manifest.append(
-                {
-                    "despacho_id": despacho_id,
-                    "despacho": publication.despacho,
-                    "publication_id": publication.publication_id,
-                    "publication_url": publication.publication_url,
-                    "documents": [doc.to_dict() for doc in documents],
-                    "selected_pdf": pdf_doc.to_dict() if pdf_doc else None,
-                }
-            )
-            if not pdf_doc:
-                diagnostics.append(
-                    {
-                        "despacho_id": despacho_id,
-                        "despacho": publication.despacho,
-                        "publication_id": publication.publication_id,
-                        "status": "no_primary_pdf",
-                    }
-                )
+            if not publications:
+                logger.info("Despacho %s — sin publicaciones", despacho_id)
+                diagnostics.append({"despacho_id": despacho_id, "despacho": despacho["nombre"], "status": "no_publications"})
                 continue
 
-            pdf_filename = sanitize_filename(f"{despacho_id}_{pdf_doc.label}")
-            if not pdf_filename.lower().endswith(".pdf"):
-                pdf_filename += ".pdf"
-            pdf_path = pdf_dir / pdf_filename
-            client.download_document(pdf_doc.url, pdf_path)
-            pdfs_total += 1
+            logger.info("Despacho %s — %d publicacion(es)", despacho_id, len(publications))
 
-            parsed_rows = [row.to_dict() for row in parse_pdf(pdf_path)]
+            for publication in publications:
+                try:
+                    documents = client.fetch_detail_documents(publication.publication_url)
+                    pdf_doc = choose_primary_document(documents)
+                    selected_docs_manifest.append(
+                        {
+                            "despacho_id": despacho_id,
+                            "despacho": publication.despacho,
+                            "publication_id": publication.publication_id,
+                            "publication_url": publication.publication_url,
+                            "documents": [doc.to_dict() for doc in documents],
+                            "selected_pdf": pdf_doc.to_dict() if pdf_doc else None,
+                        }
+                    )
+                    if not pdf_doc:
+                        diagnostics.append(
+                            {
+                                "despacho_id": despacho_id,
+                                "despacho": publication.despacho,
+                                "publication_id": publication.publication_id,
+                                "status": "no_primary_pdf",
+                            }
+                        )
+                        continue
+
+                    pdf_filename = sanitize_filename(f"{despacho_id}_{pdf_doc.label}")
+                    if not pdf_filename.lower().endswith(".pdf"):
+                        pdf_filename += ".pdf"
+                    pdf_path = pdf_dir / pdf_filename
+                    client.download_document(pdf_doc.url, pdf_path)
+                    pdfs_total += 1
+                    logger.info("PDF descargado: %s", pdf_filename)
+
+                    parsed_rows = [row.to_dict() for row in parse_pdf(pdf_path)]
+                    logger.info("PDF %s — %d filas extraidas", pdf_filename, len(parsed_rows))
+                    diagnostics.append(
+                        {
+                            "despacho_id": despacho_id,
+                            "despacho": publication.despacho,
+                            "publication_id": publication.publication_id,
+                            "status": "ok",
+                            "pdf": pdf_filename,
+                            "rows": len(parsed_rows),
+                        }
+                    )
+                    for row in parsed_rows:
+                        records.append(
+                            merge_record_context(
+                                run_label=run_label,
+                                fecha_inicio=fecha_inicio,
+                                fecha_fin=fecha_fin,
+                                despacho_id=despacho_id,
+                                publication=publication,
+                                pdf_doc=pdf_doc,
+                                pdf_path=pdf_path,
+                                row=row,
+                            )
+                        )
+                except Exception as exc:
+                    logger.error("despacho=%s pub=%s: %s", despacho_id, publication.publication_id, exc)
+                    diagnostics.append(
+                        {
+                            "despacho_id": despacho_id,
+                            "despacho": publication.despacho,
+                            "publication_id": publication.publication_id,
+                            "status": "error",
+                            "error": str(exc),
+                        }
+                    )
+
+        except Exception as exc:
+            logger.error("despacho=%s: %s", despacho_id, exc)
             diagnostics.append(
                 {
                     "despacho_id": despacho_id,
-                    "despacho": publication.despacho,
-                    "publication_id": publication.publication_id,
-                    "status": "ok",
-                    "pdf": pdf_filename,
-                    "rows": len(parsed_rows),
+                    "despacho": despacho.get("nombre"),
+                    "status": "error",
+                    "error": str(exc),
                 }
             )
-            for row in parsed_rows:
-                records.append(
-                    merge_record_context(
-                        run_label=run_label,
-                        fecha_inicio=fecha_inicio,
-                        fecha_fin=fecha_fin,
-                        despacho_id=despacho_id,
-                        publication=publication,
-                        pdf_doc=pdf_doc,
-                        pdf_path=pdf_path,
-                        row=row,
-                    )
-                )
+
+    logger.info("Corrida completada — %d publicaciones, %d PDFs, %d filas", publications_total, pdfs_total, len(records))
 
     enrichment_enabled = False
     if not no_db:
@@ -242,9 +285,10 @@ def cli() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+
     parser = argparse.ArgumentParser(description="Flujo end-to-end para Medellín civil circuito")
-    parser.add_argument("--fecha-inicio", required=True)
-    parser.add_argument("--fecha-fin", required=True)
+    parser.add_argument("--fecha-inicio", required=True, type=valid_date)
+    parser.add_argument("--fecha-fin", required=True, type=valid_date)
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--no-db", action="store_true", help="Saltar enriquecimiento y persistencia en PostgreSQL")
