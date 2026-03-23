@@ -1,0 +1,62 @@
+{
+  "retention_hours": 24,
+  "dry_run": false,
+  "runs_scanned": 5,
+  "runs_cleaned": 2,
+  "pdf_dirs_removed": 2,
+  "diagnostics_dirs_removed": 2,
+  "raw_dirs_removed": 1,
+  "items": [
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-18_a_2026-03-18_20260321T001123Z/pdfs"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-18_a_2026-03-18_20260321T001123Z/diagnostics"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T002651Z/pdfs"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T002651Z/diagnostics"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/raw/pdfs"
+    }
+  ]
+}
+{
+  "retention_hours": 24,
+  "dry_run": false,
+  "runs_scanned": 6,
+  "runs_cleaned": 3,
+  "pdf_dirs_removed": 3,
+  "diagnostics_dirs_removed": 2,
+  "raw_dirs_removed": 0,
+  "items": [
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T220001Z/pdfs"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T220001Z/diagnostics"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T220157Z/pdfs"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T220517Z/pdfs"
+    },
+    {
+      "action": "remove_dir",
+      "path": "/root/.openclaw/workspace/legal-monitor/data/runs/medellin_civil_circuito_2026-03-19_a_2026-03-20_20260321T220517Z/diagnostics"
+    }
+  ]
+}
