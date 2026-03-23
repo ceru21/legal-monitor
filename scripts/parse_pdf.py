@@ -4,13 +4,8 @@ import argparse
 import json
 import re
 from pathlib import Path
-import sys
 
 import pdfplumber
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
 from models import ParsedRow
 from utils import normalize_text, sha256_file, write_json
@@ -158,8 +153,7 @@ def detect_footer_top(words: list[dict]) -> float | None:
     return None
 
 
-def extract_column_fields(page, record_text: str, radicado: str, next_radicado_top: float | None) -> dict:
-    words = page.extract_words(use_text_flow=False, keep_blank_chars=False)
+def extract_column_fields(words: list[dict], record_text: str, radicado: str, next_radicado_top: float | None) -> dict:
     rad_word = next((w for w in words if w['text'] == radicado), None)
     if not rad_word:
         return {}
@@ -272,7 +266,7 @@ def parse_pdf(pdf_path: str | Path) -> list[ParsedRow]:
                     next_radicado = radicados_in_page[row_index]
                     next_radicado_top = rad_top_map.get(next_radicado)
 
-                fields = extract_column_fields(page, record, radicado, next_radicado_top) if radicado else {}
+                fields = extract_column_fields(page_words, record, radicado, next_radicado_top) if radicado else {}
                 descripcion_raw = fields.get('descripcion_raw')
                 actuacion = fields.get('actuacion') or (infer_actuacion(record, radicado) if radicado else None)
                 if not actuacion and descripcion_raw:
