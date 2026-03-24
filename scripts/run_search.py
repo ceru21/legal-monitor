@@ -17,6 +17,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from draft_emails import create_drafts
 from enrich_contacts import enrich_records_from_db
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
@@ -104,6 +105,11 @@ def run_pipeline(
     despacho_ids: list[str] | None,
     output_root: Path,
     no_db: bool = False,
+    draft_emails: bool = False,
+    gog_account: str | None = None,
+    draft_filter: str = "all_with_email",
+    firma_vars: dict[str, str] | None = None,
+    draft_dry_run: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -254,6 +260,20 @@ def run_pipeline(
         except Exception as exc:
             logger.warning("DB enrichment/persistence failed: %s. Continuing without DB.", sanitize_exception(exc))
 
+    if draft_emails:
+        from pathlib import Path as _Path
+        _template = PROJECT_ROOT / "config" / "email_template.html.jinja2"
+        _draft_log = output_root / "draft_log.jsonl"
+        records = create_drafts(
+            records=records,
+            template_path=_template,
+            gog_account=gog_account,
+            draft_log_path=_draft_log,
+            filter_mode=draft_filter,
+            firma_vars=firma_vars or {},
+            dry_run=draft_dry_run,
+        )
+
     metadata = {
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
@@ -261,6 +281,7 @@ def run_pipeline(
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
         "enrichment_enabled": enrichment_enabled,
+        "draft_emails_enabled": draft_emails,
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -292,7 +313,27 @@ def cli() -> None:
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--no-db", action="store_true", help="Saltar enriquecimiento y persistencia en PostgreSQL")
+    parser.add_argument("--draft-emails", action="store_true", help="Crear borradores Gmail para registros con email")
+    parser.add_argument("--gog-account", help="Cuenta Gmail autenticada en gog")
+    parser.add_argument(
+        "--draft-filter",
+        default="all_with_email",
+        choices=["all_with_email", "accepted_and_review", "accepted_only"],
+        help="Modo de filtro para creación de drafts",
+    )
+    parser.add_argument("--firma-nombre", default="[NOMBRE BUFETE]")
+    parser.add_argument("--abogado-nombre", default="[NOMBRE DEL ABOGADO]")
+    parser.add_argument("--abogado-telefono", default="")
+    parser.add_argument("--abogado-email", default="")
+    parser.add_argument("--draft-dry-run", action="store_true", help="Simula drafts sin crearlos en Gmail")
     args = parser.parse_args()
+
+    firma_vars = {
+        "firma_nombre": args.firma_nombre,
+        "abogado_nombre": args.abogado_nombre,
+        "abogado_telefono": args.abogado_telefono,
+        "abogado_email": args.abogado_email,
+    }
 
     try:
         validate_date(args.fecha_inicio)
@@ -309,6 +350,11 @@ def cli() -> None:
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
         no_db=args.no_db,
+        draft_emails=args.draft_emails,
+        gog_account=args.gog_account,
+        draft_filter=args.draft_filter,
+        firma_vars=firma_vars,
+        draft_dry_run=args.draft_dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

@@ -65,6 +65,9 @@ OPERATIVE_COLUMNS = [
     "actuacion_match",
     "match_camara",
     "emails_encontrados",
+    "draft_id",
+    "draft_status",
+    "draft_email_to",
 ]
 
 PDF_SUMMARY_COLUMNS = [
