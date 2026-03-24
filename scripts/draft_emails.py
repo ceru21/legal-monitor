@@ -123,7 +123,13 @@ def gog_create_draft(
     try:
         import os
         env = {**os.environ, "GOG_KEYRING_PASSWORD": os.environ.get("GOG_KEYRING_PASSWORD", "")}
-        cmd = ["gog", "gmail", "drafts", "create",
+        # Usa wrapper restringido si existe, fallback a gog directo con --enable-commands
+        _wrapper = PROJECT_ROOT / "ops" / "gog_restricted.sh"
+        if _wrapper.exists():
+            _gog_cmd = [str(_wrapper)]
+        else:
+            _gog_cmd = ["gog", "--enable-commands", "gmail"]
+        cmd = _gog_cmd + ["gmail", "drafts", "create",
                "--to", to,
                "--subject", subject,
                "--body-html", body_html,
