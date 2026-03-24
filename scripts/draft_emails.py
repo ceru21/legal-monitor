@@ -18,7 +18,6 @@ import json
 import logging
 import subprocess
 import sys
-import tempfile
 import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -118,21 +117,16 @@ def gog_create_draft(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """
-    Llama a `gog gmail drafts create` pasando el body HTML por stdin vía
-    archivo temporal (evita límite de longitud de argumentos de shell).
+    Llama a `gog gmail drafts create` con --body-html para enviar HTML real.
     Retorna dict con claves: ok, draft_id, error.
     """
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".html", encoding="utf-8", delete=False) as f:
-        f.write(body_html)
-        body_file = f.name
-
     try:
         import os
         env = {**os.environ, "GOG_KEYRING_PASSWORD": os.environ.get("GOG_KEYRING_PASSWORD", "")}
         cmd = ["gog", "gmail", "drafts", "create",
                "--to", to,
                "--subject", subject,
-               "--body-file", body_file,
+               "--body-html", body_html,
                "--json"]
         if account:
             cmd += ["--account", account]
@@ -168,8 +162,6 @@ def gog_create_draft(
         return {"ok": False, "draft_id": None, "error": "timeout"}
     except FileNotFoundError:
         return {"ok": False, "draft_id": None, "error": "gog not found in PATH"}
-    finally:
-        Path(body_file).unlink(missing_ok=True)
 
 
 # ---------------------------------------------------------------------------
