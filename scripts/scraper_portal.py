@@ -3,21 +3,22 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import logging
+import time
 import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Iterable
 from urllib.parse import parse_qs, urlencode, urljoin, urlparse
-import sys
 
 import requests
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from models import DetailDocument, Publication
 from utils import normalize_text, write_json
+
+logger = logging.getLogger(__name__)
 
 BASE_URL = "https://publicacionesprocesales.ramajudicial.gov.co/"
 START_URL = urljoin(BASE_URL, "web/publicaciones-procesales/inicio")
@@ -36,11 +37,38 @@ HEADERS_JSON = {
     "Accept": "application/json, text/javascript, */*; q=0.01",
 }
 
+_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+
+
+def _load_portal_config() -> dict:
+    defaults = {"timeout_ms": 30000, "throttle_ms": 1200}
+    try:
+        import yaml
+    except ImportError:
+        return defaults
+    try:
+        pipeline_path = _CONFIG_DIR / "pipeline.yaml"
+        if pipeline_path.exists():
+            cfg = yaml.safe_load(pipeline_path.read_text(encoding="utf-8"))
+            runtime = cfg.get("runtime", {})
+            return {
+                "timeout_ms": int(runtime.get("timeout_ms", defaults["timeout_ms"])),
+                "throttle_ms": int(runtime.get("throttle_ms", defaults["throttle_ms"])),
+            }
+    except Exception as exc:
+        logger.warning("Failed to load portal config: %s — using defaults", exc)
+    return defaults
+
 
 class PortalClient:
     def __init__(self) -> None:
         self.session = requests.Session()
-        self.session.get(BASE_URL, timeout=30)
+        retry = Retry(total=3, backoff_factor=1.0, status_forcelist=[429, 500, 502, 503, 504])
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
+        cfg = _load_portal_config()
+        self._timeout = cfg["timeout_ms"] / 1000
+        self._throttle = cfg["throttle_ms"] / 1000
+        self.session.get(BASE_URL, timeout=self._timeout)
 
     def ajax_options(self, tipo_filtro: str, id_filtro: str, id_val: str = "") -> dict:
         params = {
@@ -48,7 +76,8 @@ class PortalClient:
             f"{NS}idFiltro": id_filtro,
             f"{NS}id": id_val,
         }
-        response = self.session.get(AJAX_URL, params=params, headers=HEADERS_JSON, timeout=30)
+        response = self.session.get(AJAX_URL, params=params, headers=HEADERS_JSON, timeout=self._timeout)
+        time.sleep(self._throttle)
         response.raise_for_status()
         return response.json()
 
@@ -99,7 +128,8 @@ class PortalClient:
 
     def search_html(self, fecha_inicio: str, fecha_fin: str, id_despacho: str | None = None, cur: int = 1) -> str:
         params = self.build_search_params(fecha_inicio, fecha_fin, id_despacho=id_despacho, cur=cur, delta=10)
-        response = self.session.get(SEARCH_URL, params=params, timeout=30)
+        response = self.session.get(SEARCH_URL, params=params, timeout=self._timeout)
+        time.sleep(self._throttle)
         response.raise_for_status()
         return response.text
 
@@ -134,7 +164,9 @@ class PortalClient:
         return publications
 
     def fetch_detail_documents(self, publication_url: str) -> list[DetailDocument]:
-        response = self.session.get(publication_url, timeout=30)
+        self._validate_portal_url(publication_url)
+        response = self.session.get(publication_url, timeout=self._timeout)
+        time.sleep(self._throttle)
         response.raise_for_status()
         html_text = response.text
         docs: list[DetailDocument] = []
@@ -156,12 +188,24 @@ class PortalClient:
         return docs
 
     def download_document(self, document_url: str, output_path: str | Path) -> Path:
+        self._validate_portal_url(document_url)
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         response = self.session.get(document_url, timeout=60)
+        time.sleep(self._throttle)
         response.raise_for_status()
-        output_path.write_bytes(response.content)
+        content = response.content
+        if content[:5] != b"%PDF-":
+            logger.warning("Non-PDF content at %s (magic: %r) — skipping write", document_url, content[:8])
+            return output_path
+        output_path.write_bytes(content)
         return output_path
+
+    @staticmethod
+    def _validate_portal_url(url: str) -> None:
+        host = urlparse(url).netloc
+        if not (host.endswith(".ramajudicial.gov.co") or host == "ramajudicial.gov.co"):
+            raise ValueError(f"URL outside allowed domain: {url!r}")
 
     @staticmethod
     def _is_primary_pdf(label: str) -> bool:
