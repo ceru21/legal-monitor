@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from draft_emails import create_drafts
 from enrich_contacts import enrich_records
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
@@ -98,6 +99,11 @@ def run_pipeline(
     output_root: Path,
     enrich_file_2023: str | None = None,
     enrich_file_2025: str | None = None,
+    draft_emails: bool = False,
+    gog_account: str | None = None,
+    draft_filter: str = "all_with_email",
+    firma_vars: dict[str, str] | None = None,
+    draft_dry_run: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -224,6 +230,20 @@ def run_pipeline(
     if enrich_file_2023 and enrich_file_2025:
         records = enrich_records(records, enrich_file_2023, enrich_file_2025)
 
+    if draft_emails:
+        from pathlib import Path as _Path
+        _template = PROJECT_ROOT / "config" / "email_template.html.jinja2"
+        _draft_log = output_root / "draft_log.jsonl"
+        records = create_drafts(
+            records=records,
+            template_path=_template,
+            gog_account=gog_account,
+            draft_log_path=_draft_log,
+            filter_mode=draft_filter,
+            firma_vars=firma_vars or {},
+            dry_run=draft_dry_run,
+        )
+
     metadata = {
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
@@ -231,6 +251,7 @@ def run_pipeline(
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
         "enrichment_enabled": bool(enrich_file_2023 and enrich_file_2025),
+        "draft_emails_enabled": draft_emails,
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -265,7 +286,27 @@ def cli() -> None:
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--enrich-file-2023")
     parser.add_argument("--enrich-file-2025")
+    parser.add_argument("--draft-emails", action="store_true", help="Crear borradores Gmail para registros con email")
+    parser.add_argument("--gog-account", help="Cuenta Gmail autenticada en gog")
+    parser.add_argument(
+        "--draft-filter",
+        default="all_with_email",
+        choices=["all_with_email", "accepted_and_review", "accepted_only"],
+        help="Modo de filtro para creación de drafts",
+    )
+    parser.add_argument("--firma-nombre", default="[NOMBRE BUFETE]")
+    parser.add_argument("--abogado-nombre", default="[NOMBRE DEL ABOGADO]")
+    parser.add_argument("--abogado-telefono", default="")
+    parser.add_argument("--abogado-email", default="")
+    parser.add_argument("--draft-dry-run", action="store_true", help="Simula drafts sin crearlos en Gmail")
     args = parser.parse_args()
+
+    firma_vars = {
+        "firma_nombre": args.firma_nombre,
+        "abogado_nombre": args.abogado_nombre,
+        "abogado_telefono": args.abogado_telefono,
+        "abogado_email": args.abogado_email,
+    }
 
     result = run_pipeline(
         fecha_inicio=args.fecha_inicio,
@@ -274,6 +315,11 @@ def cli() -> None:
         output_root=Path(args.output_root),
         enrich_file_2023=args.enrich_file_2023,
         enrich_file_2025=args.enrich_file_2025,
+        draft_emails=args.draft_emails,
+        gog_account=args.gog_account,
+        draft_filter=args.draft_filter,
+        firma_vars=firma_vars,
+        draft_dry_run=args.draft_dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
