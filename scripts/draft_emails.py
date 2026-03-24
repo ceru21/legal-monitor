@@ -127,6 +127,8 @@ def gog_create_draft(
         body_file = f.name
 
     try:
+        import os
+        env = {**os.environ, "GOG_KEYRING_PASSWORD": os.environ.get("GOG_KEYRING_PASSWORD", "")}
         cmd = ["gog", "gmail", "drafts", "create",
                "--to", to,
                "--subject", subject,
@@ -143,6 +145,7 @@ def gog_create_draft(
             capture_output=True,
             text=True,
             timeout=30,
+            env=env,
         )
         if result.returncode != 0:
             return {"ok": False, "draft_id": None, "error": result.stderr.strip() or result.stdout.strip()}
