@@ -11,7 +11,15 @@
       "Bash(cp -r /Users/cesarriosusuga/ia-company/legal-monitor/.gitattributes /Users/cesarriosusuga/ia-company/legal-monitor/ACCESS_CONTROL_PLAN.md /Users/cesarriosusuga/ia-company/legal-monitor/AGENTS.md /Users/cesarriosusuga/ia-company/legal-monitor/CONTEXT.md /Users/cesarriosusuga/ia-company/legal-monitor/IDENTITY.md /Users/cesarriosusuga/ia-company/legal-monitor/USER.md /Users/cesarriosusuga/ia-company/legal-monitor/docs /tmp/legal-monitor-local-backup/)",
       "Bash(git add:*)",
       "Bash(git branch:*)",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 list:*)",
+      "Bash(pyenv versions:*)",
+      "Bash(export LC_ALL=en_US.UTF-8)",
+      "Bash(export LANG=en_US.UTF-8)",
+      "Bash(pip3 install:*)",
+      "Bash(RUN_DIR=\"data/runs/medellin_civil_circuito_2026-03-20_a_2026-03-23_20260323T235844Z\" cd /Users/cesarriosusuga/ia-company/legal-monitor __NEW_LINE_384e8359acb748a6__ echo \"=== summary.json ===\" python3 -c \"import json; d=json.load\\(open\\(''''$RUN_DIR/exports/summary.json''''\\)\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\" __NEW_LINE_384e8359acb748a6__ echo \"\" echo \"=== diagnostics ===\" python3 -c \"import json; d=json.load\\(open\\(''''$RUN_DIR/diagnostics/pipeline_diagnostics.json''''\\)\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\")",
+      "Bash(RUN_DIR=\"data/runs/medellin_civil_circuito_2026-03-20_a_2026-03-23_20260323T235844Z\")"
     ]
   }
 }
