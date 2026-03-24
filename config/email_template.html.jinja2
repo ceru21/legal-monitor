@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="font-family: Georgia, serif; font-size: 14px; color: #1a1a1a; max-width: 680px; margin: 0 auto; padding: 20px;">
+
+<p>Estimado(a) representante de <strong>{{ demandado | default("su empresa") }}</strong>,</p>
+
+<p>
+Por medio de la presente, nos permitimos dirigirnos a usted en relación con el proceso judicial
+identificado con radicado <strong>{{ radicado | default("N/D") }}</strong>, correspondiente a un proceso de
+<em>{{ tipo_proceso | default("naturaleza civil") }}</em>, publicado en el
+<strong>{{ despacho | default("despacho judicial") }}</strong> con fecha {{ fecha_publicacion | default("reciente") }}.
+</p>
+
+<p>
+En <strong>{{ firma_nombre | default("[NOMBRE BUFETE]") }}</strong>, contamos con un equipo especializado en
+derecho civil y comercial, con amplia experiencia en procesos de esta naturaleza.
+Le ofrecemos nuestros servicios de acompañamiento jurídico integral, que incluyen:
+</p>
+
+<ul>
+  <li>Asesoría y representación en todas las etapas del proceso</li>
+  <li>Análisis de alternativas de negociación y acuerdo</li>
+  <li>Gestión de documentación y presentación de recursos</li>
+  <li>Seguimiento continuo a las publicaciones del despacho</li>
+</ul>
+
+<p>
+Si desea conocer más sobre cómo podemos apoyarle en este proceso, con gusto agendamos
+una reunión sin costo ni compromiso.
+</p>
+
+<p>Atentamente,</p>
+
+<p>
+<strong>{{ abogado_nombre | default("[NOMBRE DEL ABOGADO]") }}</strong><br>
+{{ firma_nombre | default("[NOMBRE BUFETE]") }}<br>
+{% if abogado_telefono is defined and abogado_telefono %}Tel: {{ abogado_telefono }}<br>{% endif %}
+{% if abogado_email is defined and abogado_email %}{{ abogado_email }}{% endif %}
+</p>
+
+</body>
+</html>
