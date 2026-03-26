@@ -19,6 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from draft_emails import create_drafts
 from enrich_contacts import enrich_records_from_db
+from sheets_report import export_to_sheets
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
 from parse_pdf import parse_pdf
@@ -110,6 +111,8 @@ def run_pipeline(
     draft_filter: str = "all_with_email",
     firma_vars: dict[str, str] | None = None,
     draft_dry_run: bool = False,
+    sheets_report: bool = False,
+    sheets_dry_run: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -282,6 +285,7 @@ def run_pipeline(
         "pdfs_total": pdfs_total,
         "enrichment_enabled": enrichment_enabled,
         "draft_emails_enabled": draft_emails,
+        "sheets_report_enabled": sheets_report,
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -290,12 +294,28 @@ def run_pipeline(
     write_json(diagnostics_dir / "selected_documents.json", selected_docs_manifest)
     write_json(diagnostics_dir / "pipeline_diagnostics.json", diagnostics)
 
+    sheets_result: dict[str, Any] = {}
+    if sheets_report and gog_account:
+        logger.info("Exportando a Google Sheets...")
+        try:
+            sheets_result = export_to_sheets(
+                run_label=run_label,
+                records=records,
+                account=gog_account,
+                dry_run=sheets_dry_run,
+            )
+            logger.info("Sheets: %s", sheets_result.get("sheet_url", "dry-run"))
+        except Exception as exc:
+            logger.error("Sheets export fallido: %s", exc)
+            sheets_result = {"error": str(exc)}
+
     result = {
         "run_label": run_label,
         "run_dir": str(run_dir),
         "metadata": metadata,
         "exports": outputs,
         "diagnostics": str(diagnostics_dir / "pipeline_diagnostics.json"),
+        "sheets": sheets_result or None,
     }
     write_json(run_dir / "run_result.json", result)
     return result
@@ -326,6 +346,8 @@ def cli() -> None:
     parser.add_argument("--abogado-telefono", default="")
     parser.add_argument("--abogado-email", default="")
     parser.add_argument("--draft-dry-run", action="store_true", help="Simula drafts sin crearlos en Gmail")
+    parser.add_argument("--sheets-report", action="store_true", help="Exportar resultados a Google Sheets")
+    parser.add_argument("--sheets-dry-run", action="store_true", help="Simula export a Sheets sin escribir nada")
     args = parser.parse_args()
 
     firma_vars = {
@@ -355,6 +377,8 @@ def cli() -> None:
         draft_filter=args.draft_filter,
         firma_vars=firma_vars,
         draft_dry_run=args.draft_dry_run,
+        sheets_report=args.sheets_report,
+        sheets_dry_run=args.sheets_dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
