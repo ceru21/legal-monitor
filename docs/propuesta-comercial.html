@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor Legal Inteligente — Propuesta Comercial</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    display: none;
+    width: 100%;
+    height: 100vh;
+    padding: 60px 80px;
+    position: absolute;
+    top: 0; left: 0;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .slide.active {
+    display: flex;
+  }
+
+  /* ── COLORES ── */
+  .bg-dark   { background: #0d1117; }
+  .bg-navy   { background: #0f2337; }
+  .bg-card   { background: #161b22; }
+
+  /* ── SLIDE 1: PORTADA ── */
+  .slide-cover {
+    background: linear-gradient(135deg, #0f2337 0%, #0d1117 60%);
+    align-items: flex-start;
+    justify-content: center;
+  }
+  .cover-tag {
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #58a6ff;
+    margin-bottom: 24px;
+  }
+  .cover-title {
+    font-size: 56px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+  .cover-title span { color: #58a6ff; }
+  .cover-sub {
+    font-size: 20px;
+    color: #8b949e;
+    margin-bottom: 48px;
+    max-width: 560px;
+    line-height: 1.6;
+  }
+  .cover-meta {
+    font-size: 13px;
+    color: #484f58;
+    border-top: 1px solid #21262d;
+    padding-top: 24px;
+    display: flex;
+    gap: 40px;
+  }
+  .cover-meta span { color: #8b949e; }
+  .cover-accent {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 180px;
+    opacity: 0.04;
+    font-weight: 900;
+  }
+
+  /* ── SLIDE 2: PROBLEMA ── */
+  .slide-problem { background: #0d1117; }
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 40px;
+  }
+  .problem-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 28px;
+  }
+  .problem-card .icon { font-size: 28px; margin-bottom: 12px; }
+  .problem-card h3 { font-size: 16px; color: #f0883e; margin-bottom: 8px; }
+  .problem-card p { font-size: 14px; color: #8b949e; line-height: 1.6; }
+
+  /* ── SLIDE 3: SOLUCIÓN ── */
+  .slide-solution { background: #0f2337; }
+  .solution-center {
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .solution-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-top: 48px;
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 16px 20px;
+    text-align: center;
+    min-width: 120px;
+  }
+  .flow-step .step-icon { font-size: 24px; margin-bottom: 6px; }
+  .flow-step .step-label { font-size: 12px; color: #8b949e; }
+  .flow-arrow {
+    font-size: 20px;
+    color: #58a6ff;
+    margin: 0 8px;
+  }
+
+  /* ── SLIDE 4-10: MÓDULOS ── */
+  .slide-module { background: #0d1117; }
+  .module-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .module-number {
+    background: #58a6ff;
+    color: #0d1117;
+    font-weight: 700;
+    font-size: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .module-tag {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #58a6ff;
+  }
+  .module-title {
+    font-size: 36px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+  .module-desc {
+    font-size: 16px;
+    color: #8b949e;
+    line-height: 1.7;
+    max-width: 640px;
+    margin-bottom: 32px;
+  }
+  .module-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .module-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 14px;
+    color: #c9d1d9;
+    line-height: 1.5;
+  }
+  .module-list li::before {
+    content: "✓";
+    color: #3fb950;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .module-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-top: 24px;
+  }
+  .status-ready { background: #1a4731; color: #3fb950; }
+  .status-dev   { background: #2d2106; color: #d29922; }
+
+  .module-visual {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 12px;
+    padding: 28px;
+    width: 320px;
+  }
+  .module-visual .vis-title {
+    font-size: 11px;
+    color: #484f58;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+  }
+  .vis-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 8px 0;
+    border-bottom: 1px solid #21262d;
+    color: #8b949e;
+  }
+  .vis-row:last-child { border-bottom: none; }
+  .vis-row span:last-child { color: #c9d1d9; }
+
+  /* ── SLIDE TIERS ── */
+  .slide-tiers { background: #0d1117; }
+  .tiers-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 40px;
+  }
+  .tier-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 12px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+  .tier-card.featured {
+    border-color: #58a6ff;
+  }
+  .tier-card.featured::before {
+    content: "RECOMENDADO";
+    position: absolute;
+    top: 16px; right: 16px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #58a6ff;
+    background: #0f2337;
+    padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .tier-name {
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #58a6ff;
+    margin-bottom: 8px;
+  }
+  .tier-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 16px;
+  }
+  .tier-desc {
+    font-size: 14px;
+    color: #8b949e;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .tier-modules {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .tier-modules li {
+    font-size: 13px;
+    color: #c9d1d9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tier-modules li::before {
+    content: "●";
+    font-size: 6px;
+    color: #58a6ff;
+  }
+
+  /* ── SLIDE SIGUIENTE PASO ── */
+  .slide-next { background: linear-gradient(135deg, #0f2337 0%, #0d1117 100%); }
+  .next-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 40px;
+    max-width: 600px;
+  }
+  .next-step {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 20px 24px;
+  }
+  .step-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: #58a6ff;
+    min-width: 32px;
+  }
+  .step-text { font-size: 15px; color: #c9d1d9; }
+
+  /* ── TÍTULOS GENERALES ── */
+  .slide-tag {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #58a6ff;
+    margin-bottom: 12px;
+  }
+  .slide-title {
+    font-size: 42px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+    line-height: 1.15;
+  }
+  .slide-subtitle {
+    font-size: 16px;
+    color: #8b949e;
+    margin-bottom: 8px;
+  }
+
+  /* ── NAVEGACIÓN ── */
+  .nav {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 40px;
+    padding: 10px 20px;
+    z-index: 100;
+  }
+  .nav button {
+    background: none;
+    border: none;
+    color: #58a6ff;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .nav button:hover { background: #21262d; }
+  .nav button:disabled { color: #484f58; cursor: default; }
+  .nav button:disabled:hover { background: none; }
+  .slide-counter {
+    font-size: 12px;
+    color: #8b949e;
+    min-width: 48px;
+    text-align: center;
+  }
+  .dots {
+    display: flex;
+    gap: 6px;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #21262d;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .dot.active { background: #58a6ff; }
+
+  /* ── LOGO MARCA ── */
+  .brand {
+    position: fixed;
+    top: 24px;
+    right: 32px;
+    font-size: 12px;
+    color: #484f58;
+    letter-spacing: 1px;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<div class="brand">[NOMBRE TU EMPRESA]</div>
+
+<div class="deck">
+
+  <!-- SLIDE 1: PORTADA -->
+  <div class="slide slide-cover active">
+    <div class="cover-tag">Propuesta Comercial — 2026</div>
+    <div class="cover-title">Monitor Legal<br><span>Inteligente</span></div>
+    <div class="cover-sub">Automatización del monitoreo judicial para identificar y contactar prospectos antes que nadie.</div>
+    <div class="cover-meta">
+      Preparado para <span>[NOMBRE BUFETE]</span> &nbsp;·&nbsp; Marzo 2026
+    </div>
+    <div class="cover-accent">⚖</div>
+  </div>
+
+  <!-- SLIDE 2: EL PROBLEMA -->
+  <div class="slide slide-problem bg-dark">
+    <div class="slide-tag">El contexto</div>
+    <div class="slide-title">El problema actual</div>
+    <div class="slide-subtitle">Encontrar clientes en procesos activos es lento y manual</div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="icon">⏱</div>
+        <h3>Tiempo perdido</h3>
+        <p>Revisar el portal judicial despacho por despacho toma horas — todos los días, sin garantía de resultados.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">📉</div>
+        <h3>Oportunidades perdidas</h3>
+        <p>Para cuando se identifica una empresa demandada, muchas veces ya tiene representación legal.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">🔎</div>
+        <h3>Sin contacto directo</h3>
+        <p>Encontrar el email correcto de una empresa requiere búsqueda manual adicional en cámara de comercio.</p>
+      </div>
+      <div class="problem-card">
+        <div class="icon">📋</div>
+        <h3>Sin trazabilidad</h3>
+        <p>No hay registro claro de a quién se contactó, cuándo, ni en qué proceso — todo queda en la memoria del abogado.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: LA SOLUCIÓN -->
+  <div class="slide slide-solution">
+    <div class="solution-center">
+      <div class="slide-tag">La solución</div>
+      <div class="slide-title">De la publicación al borrador<br>en minutos — automáticamente</div>
+      <div class="solution-flow">
+        <div class="flow-step">
+          <div class="step-icon">🏛</div>
+          <div class="step-label">Portal judicial</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="step-icon">📄</div>
+          <div class="step-label">Descarga PDF</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="step-icon">🔍</div>
+          <div class="step-label">Extrae datos</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="step-icon">🏢</div>
+          <div class="step-label">Busca email</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="step-icon">✉️</div>
+          <div class="step-label">Borrador listo</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: MÓDULO 1 -->
+  <div class="slide slide-module">
+    <div class="module-header">
+      <div class="module-number">1</div>
+      <div>
+        <div class="module-tag">Módulo 1</div>
+      </div>
+    </div>
+    <div class="slide-title">Detección de publicaciones judiciales</div>
+    <div class="module-desc">
+      Ingresa al portal de la Rama Judicial, filtra por ciudad, especialidad y rango de fechas, y detecta publicaciones nuevas de los despachos configurados.
+    </div>
+    <ul class="module-list">
+      <li>Monitorea múltiples despachos simultáneamente</li>
+      <li>Configurable por ciudad, especialidad y fechas</li>
+      <li>Detecta solo publicaciones nuevas — sin duplicados</li>
+    </ul>
+    <div class="module-status status-ready">✓ Disponible</div>
+    <div class="module-visual">
+      <div class="vis-title">Ejemplo — última ejecución</div>
+      <div class="vis-row"><span>Despachos monitoreados</span><span>22</span></div>
+      <div class="vis-row"><span>Publicaciones encontradas</span><span>85</span></div>
+      <div class="vis-row"><span>Ciudad</span><span>Medellín</span></div>
+      <div class="vis-row"><span>Especialidad</span><span>Civil circuito</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: MÓDULO 2 + 3 -->
+  <div class="slide slide-module">
+    <div class="module-header">
+      <div class="module-number">2</div>
+      <div>
+        <div class="module-tag">Módulos 2 y 3</div>
+      </div>
+    </div>
+    <div class="slide-title">Descarga y extracción de procesos</div>
+    <div class="module-desc">
+      Descarga automáticamente los PDFs de cada publicación y extrae la información estructurada de cada proceso.
+    </div>
+    <ul class="module-list">
+      <li>Descarga y procesa los PDFs de estados judiciales</li>
+      <li>Extrae radicado, tipo de proceso, demandante, demandado y actuación</li>
+      <li>Tipos monitoreados: Verbal, Ejecutivo, Ejecutivo Singular, Ordinario, Insolvencia, Reorganización Empresarial</li>
+      <li>Actuaciones de interés: Auto admite demanda, Libra mandamiento de pago</li>
+      <li>Exclusiones automáticas: inadmisiones, rechazos, negaciones</li>
+    </ul>
+    <div class="module-status status-ready">✓ Disponible</div>
+    <div class="module-visual">
+      <div class="vis-title">Ejemplo — última ejecución</div>
+      <div class="vis-row"><span>PDFs procesados</span><span>84</span></div>
+      <div class="vis-row"><span>Registros extraídos</span><span>1.030</span></div>
+      <div class="vis-row"><span>Aceptados</span><span>92</span></div>
+      <div class="vis-row"><span>En revisión</span><span>21</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: MÓDULO 4 -->
+  <div class="slide slide-module">
+    <div class="module-header">
+      <div class="module-number">4</div>
+      <div>
+        <div class="module-tag">Módulo 4</div>
+      </div>
+    </div>
+    <div class="slide-title">Enriquecimiento con<br>cámara de comercio</div>
+    <div class="module-desc">
+      Cruza automáticamente el nombre de cada empresa demandada contra el directorio comercial y obtiene el email de contacto registrado.
+    </div>
+    <ul class="module-list">
+      <li>Normalización inteligente de nombres de empresa</li>
+      <li>Cruce contra directorio 2023 y 2025</li>
+      <li>Obtiene email comercial registrado oficialmente</li>
+      <li>Sin búsquedas manuales adicionales</li>
+    </ul>
+    <div class="module-status status-ready">✓ Disponible</div>
+    <div class="module-visual">
+      <div class="vis-title">Ejemplo — última ejecución</div>
+      <div class="vis-row"><span>Empresas analizadas</span><span>1.030</span></div>
+      <div class="vis-row"><span>Con email encontrado</span><span>178</span></div>
+      <div class="vis-row"><span>Tasa de enriquecimiento</span><span>17%</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: MÓDULO 5 -->
+  <div class="slide slide-module">
+    <div class="module-header">
+      <div class="module-number">5</div>
+      <div>
+        <div class="module-tag">Módulo 5</div>
+      </div>
+    </div>
+    <div class="slide-title">Generación de borradores de correo</div>
+    <div class="module-desc">
+      Crea un borrador profesional en Gmail por cada prospecto con email encontrado. Personalizado con los datos del proceso. El abogado revisa y decide si envía.
+    </div>
+    <ul class="module-list">
+      <li>Un borrador por prospecto — personalizado con radicado, despacho y tipo de proceso</li>
+      <li>Plantilla profesional adaptable al estilo del bufete</li>
+      <li>El sistema nunca envía por su cuenta — solo prepara</li>
+      <li>Registro de qué empresas ya fueron contactadas</li>
+      <li>Sin duplicados entre ejecuciones</li>
+    </ul>
+    <div class="module-status status-ready">✓ Disponible</div>
+    <div class="module-visual">
+      <div class="vis-title">Ejemplo — última ejecución</div>
+      <div class="vis-row"><span>Borradores creados</span><span>113</span></div>
+      <div class="vis-row"><span>Listos en Gmail</span><span>✓</span></div>
+      <div class="vis-row"><span>Duplicados enviados</span><span>0</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: MÓDULO 6 + 7 -->
+  <div class="slide slide-module">
+    <div class="module-header">
+      <div class="module-number">6</div>
+      <div>
+        <div class="module-tag">Módulos 6 y 7</div>
+      </div>
+    </div>
+    <div class="slide-title">Programación y reportes</div>
+    <div class="module-desc">
+      El sistema corre solo según el horario configurado y genera un reporte completo en Google Sheets al finalizar cada ejecución.
+    </div>
+    <ul class="module-list">
+      <li>Ejecución automática — diaria, semanal o a demanda</li>
+      <li>Sin intervención técnica para cambiar horarios</li>
+      <li>Reporte en Google Sheets: un archivo por mes, una pestaña por ejecución</li>
+      <li>Todos los registros disponibles para análisis en Drive</li>
+      <li>Historial completo de cada ejecución</li>
+    </ul>
+    <div class="module-status status-ready">✓ Disponible</div>
+  </div>
+
+  <!-- SLIDE 9: TIERS -->
+  <div class="slide slide-tiers">
+    <div class="slide-tag">Planes</div>
+    <div class="slide-title">Elige tu nivel de servicio</div>
+    <div class="tiers-grid">
+      <div class="tier-card">
+        <div class="tier-name">Tier 1</div>
+        <div class="tier-title">Automatización</div>
+        <div class="tier-desc">El pipeline corre solo. Los borradores llegan a Gmail y los datos quedan en Sheets. Sin intervención.</div>
+        <ul class="tier-modules">
+          <li>Detección de publicaciones judiciales</li>
+          <li>Descarga y procesamiento de PDFs</li>
+          <li>Extracción y clasificación de procesos</li>
+          <li>Enriquecimiento con cámara de comercio</li>
+          <li>Generación de borradores en Gmail</li>
+          <li>Programación de ejecuciones</li>
+          <li>Reporte mensual en Google Sheets</li>
+        </ul>
+      </div>
+      <div class="tier-card featured">
+        <div class="tier-name">Tier 2</div>
+        <div class="tier-title">Automatización<br>+ Inteligencia</div>
+        <div class="tier-desc">Todo lo anterior más acceso directo a un agente por chat para consultas, análisis y solicitudes en lenguaje natural.</div>
+        <ul class="tier-modules">
+          <li>Todo lo del Tier 1</li>
+          <li>Agente conversacional por chat</li>
+          <li>Consultas sobre resultados en lenguaje natural</li>
+          <li>Solicitud de ejecuciones inmediatas por chat</li>
+          <li>Análisis de prospectos a demanda</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: PRÓXIMOS PASOS -->
+  <div class="slide slide-next">
+    <div class="slide-tag">Para empezar</div>
+    <div class="slide-title">Próximos pasos</div>
+    <div class="next-steps">
+      <div class="next-step">
+        <div class="step-num">01</div>
+        <div class="step-text">Reunión de alineación — definir despachos, ciudad y tipos de proceso objetivo</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">02</div>
+        <div class="step-text">Configuración inicial del sistema según los criterios del bufete</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">03</div>
+        <div class="step-text">Ejecución piloto con revisión conjunta de resultados</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">04</div>
+        <div class="step-text">Ajuste de filtros y plantilla de correo</div>
+      </div>
+      <div class="next-step">
+        <div class="step-num">05</div>
+        <div class="step-text">Activación en producción</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- NAVEGACIÓN -->
+<nav class="nav">
+  <button id="prev" onclick="changeSlide(-1)" disabled>‹</button>
+  <div class="dots" id="dots"></div>
+  <span class="slide-counter" id="counter">1 / 10</span>
+  <button id="next" onclick="changeSlide(1)">›</button>
+</nav>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dotsEl = document.getElementById('dots');
+  let current = 0;
+
+  // Crear dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsEl.appendChild(d);
+  });
+
+  function goTo(n) {
+    slides[current].classList.remove('active');
+    dotsEl.children[current].classList.remove('active');
+    current = n;
+    slides[current].classList.add('active');
+    dotsEl.children[current].classList.add('active');
+    document.getElementById('counter').textContent = `${current + 1} / ${slides.length}`;
+    document.getElementById('prev').disabled = current === 0;
+    document.getElementById('next').disabled = current === slides.length - 1;
+  }
+
+  function changeSlide(dir) { goTo(current + dir); }
+
+  // Teclado
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') changeSlide(1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   changeSlide(-1);
+  });
+</script>
+</body>
+</html>
