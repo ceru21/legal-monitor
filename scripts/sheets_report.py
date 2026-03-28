@@ -86,7 +86,11 @@ def get_or_create_folder(folder_name: str, account: str) -> str:
         return folder_id
 
     data = _gog(["drive", "mkdir", folder_name], account)
-    folder_id = data.get("id") or data.get("result", {}).get("id")
+    folder_id = (
+        data.get("folder", {}).get("id")
+        or data.get("id")
+        or data.get("result", {}).get("id")
+    )
     logger.info("Carpeta creada: %s (%s)", folder_name, folder_id)
     return folder_id
 
