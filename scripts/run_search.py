@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from blacklist import BlacklistFilter
 from draft_emails import create_drafts
 from enrich_contacts import enrich_records
 from sheets_report import export_to_sheets
@@ -232,6 +233,14 @@ def run_pipeline(
 
     if enrich_file_2023 and enrich_file_2025:
         records = enrich_records(records, enrich_file_2023, enrich_file_2025)
+
+    # Blacklist — último filtro antes de drafts
+    _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
+    bf = BlacklistFilter.from_yaml(_blacklist_path)
+    records = bf.apply(records)
+    blacklisted_count = sum(1 for r in records if r.get("blacklisted"))
+    if blacklisted_count:
+        logger.info("Blacklist: %d registros marcados como excluidos", blacklisted_count)
 
     if draft_emails:
         from pathlib import Path as _Path
