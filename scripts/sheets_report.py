@@ -155,37 +155,25 @@ def ensure_tab(sheet_id: str, tab_name: str, account: str) -> str:
 # ---------------------------------------------------------------------------
 
 REPORT_COLUMNS = [
-    "run_label",
-    "fecha_inicio",
-    "fecha_fin",
     "despacho_id",
     "despacho",
     "fecha_publicacion",
     "titulo_publicacion",
     "radicado_normalizado",
-    "radicado_raw",
     "tipo_proceso",
     "actuacion",
     "demandante",
     "demandado",
-    "anotacion",
     "decision",
-    "match_reason",
     "revision_manual",
-    "process_type_confidence",
-    "actuacion_confidence",
     "match_total",
     "emails_encontrados",
     "email_2023",
     "email_2025",
-    "draft_id",
     "draft_status",
     "draft_email_to",
     "blacklisted",
     "blacklist_match",
-    "pdf_path",
-    "pdf_page_number",
-    "row_index",
 ]
 
 
