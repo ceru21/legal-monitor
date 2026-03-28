@@ -181,6 +181,8 @@ REPORT_COLUMNS = [
     "draft_id",
     "draft_status",
     "draft_email_to",
+    "blacklisted",
+    "blacklist_match",
     "pdf_path",
     "pdf_page_number",
     "row_index",

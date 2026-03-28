@@ -17,6 +17,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from blacklist import BlacklistFilter
 from draft_emails import create_drafts
 from enrich_contacts import enrich_records_from_db
 from sheets_report import export_to_sheets
@@ -262,6 +263,14 @@ def run_pipeline(
                 )
         except Exception as exc:
             logger.warning("DB enrichment/persistence failed: %s. Continuing without DB.", sanitize_exception(exc))
+
+    # Blacklist — último filtro antes de drafts
+    _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
+    bf = BlacklistFilter.from_yaml(_blacklist_path)
+    records = bf.apply(records)
+    blacklisted_count = sum(1 for r in records if r.get("blacklisted"))
+    if blacklisted_count:
+        logger.info("Blacklist: %d registros marcados como excluidos", blacklisted_count)
 
     if draft_emails:
         from pathlib import Path as _Path

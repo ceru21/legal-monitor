@@ -68,6 +68,8 @@ OPERATIVE_COLUMNS = [
     "draft_id",
     "draft_status",
     "draft_email_to",
+    "blacklisted",
+    "blacklist_match",
 ]
 
 PDF_SUMMARY_COLUMNS = [

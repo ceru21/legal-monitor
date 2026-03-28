@@ -181,6 +181,9 @@ def should_draft(record: dict[str, Any], filter_mode: str) -> tuple[bool, str]:
     """
     Retorna (True, "") si se debe crear draft, o (False, razón) si no.
     """
+    if record.get("blacklisted"):
+        return False, f"blacklisted:{record.get('blacklist_match', '')}"
+
     emails = record.get("emails_encontrados") or []
     if not emails:
         return False, "no_email"
