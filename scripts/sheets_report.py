@@ -195,6 +195,19 @@ def _cell_value(v: Any) -> str:
     return str(v)
 
 
+def _rows_to_gog_format(rows: list[list[str]]) -> str:
+    """
+    Convierte lista de filas al formato que acepta gog sheets append:
+    filas separadas por coma, celdas separadas por pipe.
+    Escapa pipes y comas dentro de los valores.
+    """
+    encoded_rows = []
+    for row in rows:
+        cells = [cell.replace("|", " ").replace(",", " ") for cell in row]
+        encoded_rows.append("|".join(cells))
+    return ",".join(encoded_rows)
+
+
 def write_records_to_tab(
     sheet_id: str,
     tab_name: str,
@@ -202,16 +215,16 @@ def write_records_to_tab(
     account: str,
 ) -> int:
     """
-    Escribe headers + datos en la pestaña. Retorna número de filas escritas.
-    Usa append en batches de 200 filas para evitar límites de la API.
+    Escribe headers + datos en la pestaña fila por fila.
+    gog sheets append usa formato: filas=coma, celdas=pipe.
+    Batches de 50 filas para no exceder límite de argumentos de shell.
     """
-    BATCH = 200
+    BATCH = 50
     range_ref = f"'{tab_name}'!A1"
 
     # Headers
-    headers = REPORT_COLUMNS
-    header_row = [headers]
-    _gog(["sheets", "append", sheet_id, range_ref] + [json.dumps(header_row)], account)
+    header_encoded = _rows_to_gog_format([REPORT_COLUMNS])
+    _gog(["sheets", "append", sheet_id, range_ref, header_encoded], account)
     time.sleep(RATE_LIMIT_S)
 
     # Datos en batches
@@ -220,13 +233,15 @@ def write_records_to_tab(
     for record in records:
         batch_rows.append([_cell_value(record.get(col)) for col in REPORT_COLUMNS])
         if len(batch_rows) >= BATCH:
-            _gog(["sheets", "append", sheet_id, f"'{tab_name}'!A1"] + [json.dumps(batch_rows)], account)
+            encoded = _rows_to_gog_format(batch_rows)
+            _gog(["sheets", "append", sheet_id, range_ref, encoded], account)
             rows_written += len(batch_rows)
             batch_rows = []
             time.sleep(RATE_LIMIT_S)
 
     if batch_rows:
-        _gog(["sheets", "append", sheet_id, f"'{tab_name}'!A1"] + [json.dumps(batch_rows)], account)
+        encoded = _rows_to_gog_format(batch_rows)
+        _gog(["sheets", "append", sheet_id, range_ref, encoded], account)
         rows_written += len(batch_rows)
         time.sleep(RATE_LIMIT_S)
 
