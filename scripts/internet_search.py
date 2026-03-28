@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus, unquote, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -169,72 +169,136 @@ def compute_score(
 # Búsqueda en internet
 # ---------------------------------------------------------------------------
 
-SEARCH_URL = "https://www.google.com/search?q={query}&hl=es&num=5"
 DDG_URL = "https://html.duckduckgo.com/html/?q={query}"
+DATOS_GOV_API = "https://www.datos.gov.co/resource/c82u-588k.json"
 
 
-def _search(query: str, throttle: float = 3.0) -> list[dict[str, str]]:
+def _lookup_nit(nombre: str) -> str | None:
     """
-    Busca en DuckDuckGo y retorna lista de {title, url, snippet}.
-    Fallback a Google si DDG falla.
+    Consulta el dataset de registro mercantil en datos.gov.co para obtener el NIT.
+    API pública Socrata — sin bloqueos ni scraping.
+    """
+    try:
+        nombre_norm = normalize(nombre)
+        # Búsqueda por palabras clave del nombre
+        words = [w for w in nombre_norm.split() if len(w) > 3]
+        if not words:
+            return None
+        like_query = "%" + "%".join(words[:3]) + "%"
+        params = {
+            "$where": f"razon_social like '{like_query}'",
+            "$limit": "5",
+        }
+        r = requests.get(DATOS_GOV_API, params=params, headers=HEADERS, timeout=15)
+        if r.status_code != 200:
+            return None
+        data = r.json()
+        if not data:
+            return None
+        # Elegir el resultado con mayor similitud de nombre
+        best = max(data, key=lambda x: name_similarity(nombre, x.get("razon_social", "")))
+        sim = name_similarity(nombre, best.get("razon_social", ""))
+        if sim < 0.75:
+            return None
+        nit = best.get("numero_identificacion") or best.get("nit")
+        dv = best.get("digito_verificacion", "")
+        if nit:
+            return f"{nit}-{dv}" if dv else str(nit)
+    except Exception as e:
+        logger.debug("NIT lookup failed for '%s': %s", nombre, e)
+    return None
+
+
+def _ddg_search(query: str, throttle: float = 3.0) -> list[dict[str, str]]:
+    """
+    Busca en DuckDuckGo SIN comillas (evita detección de bot).
+    Retorna lista de {title, url}.
     """
     time.sleep(throttle)
     results = []
-
     try:
         url = DDG_URL.format(query=quote_plus(query))
         r = requests.get(url, headers=HEADERS, timeout=15)
         if r.status_code == 200:
             soup = BeautifulSoup(r.text, "html.parser")
             for a in soup.select(".result__a")[:5]:
-                href = a.get("href", "")
+                raw_href = a.get("href", "")
+                # DDG redirecciona via /l/?uddg=<url>
+                m = re.search(r'uddg=([^&]+)', raw_href)
+                href = unquote(m.group(1)) if m else raw_href
                 title = a.get_text(strip=True)
                 snippet_el = a.find_next(".result__snippet")
                 snippet = snippet_el.get_text(strip=True) if snippet_el else ""
-                if href and title:
+                if href and title and href.startswith("http"):
                     results.append({"title": title, "url": href, "snippet": snippet})
     except Exception as e:
         logger.warning("DDG search failed: %s", e)
-
-    if not results:
-        # Fallback Google
-        try:
-            url = SEARCH_URL.format(query=quote_plus(query))
-            r = requests.get(url, headers=HEADERS, timeout=15)
-            if r.status_code == 200:
-                soup = BeautifulSoup(r.text, "html.parser")
-                for g in soup.select("div.g")[:5]:
-                    a_tag = g.select_one("a")
-                    if not a_tag:
-                        continue
-                    href = a_tag.get("href", "")
-                    title = g.select_one("h3")
-                    snippet = g.select_one(".VwiC3b")
-                    results.append({
-                        "title": title.get_text() if title else "",
-                        "url": href,
-                        "snippet": snippet.get_text() if snippet else "",
-                    })
-        except Exception as e:
-            logger.warning("Google search failed: %s", e)
-
     return results
 
 
 def _fetch_page(url: str, throttle: float = 2.0) -> str:
-    """Descarga una página y retorna el texto plano."""
+    """Descarga una página y retorna el texto plano completo."""
     time.sleep(throttle)
     try:
         r = requests.get(url, headers=HEADERS, timeout=15, allow_redirects=True)
         if r.status_code == 200:
             soup = BeautifulSoup(r.text, "html.parser")
-            # Eliminar scripts y styles
-            for tag in soup(["script", "style", "nav", "footer"]):
+            for tag in soup(["script", "style"]):
                 tag.decompose()
             return soup.get_text(separator=" ", strip=True)
     except Exception as e:
         logger.debug("Fetch failed for %s: %s", url, e)
     return ""
+
+
+CONTACT_KEYWORDS = re.compile(
+    r'\b(contacto|contact|atencion|atención|comunicacion|comunicación|'
+    r'info|gerencia|administracion|administración|ventas|comercial|'
+    r'servicio|soporte|escritorio)\b',
+    re.IGNORECASE
+)
+
+CONTACT_URL_KEYWORDS = ["contacto", "contact", "nosotros", "about", "atencion", "info"]
+
+
+def _score_email_proximity(text: str, email: str) -> int:
+    """
+    Da un score a un email según su proximidad a palabras de contacto.
+    Retorna 0-100.
+    """
+    idx = text.lower().find(email.lower())
+    if idx == -1:
+        return 0
+    # Ventana de 200 chars alrededor del email
+    window = text[max(0, idx-200):idx+200].lower()
+    matches = len(CONTACT_KEYWORDS.findall(window))
+    return min(matches * 25, 100)
+
+
+def _extract_best_emails(text: str, max_emails: int = 5) -> list[str]:
+    """
+    Extrae emails del texto ordenados por proximidad a palabras de contacto.
+    Filtra emails corporativos genéricos no deseados.
+    """
+    raw_emails = list(dict.fromkeys(EMAIL_RE.findall(text)))  # dedup orden
+    # Filtrar dominios inválidos y emails de sistema
+    blacklist_domains = {
+        "example.com", "correo.com", "email.com", "dominio.com",
+        "sentry.io", "wixpress.com", "amazonaws.com", "cloudfront.net",
+        "google.com", "gmail.com", "hotmail.com", "yahoo.com",
+        # Directorios que tienen emails de contacto propios, no de la empresa
+        "pghseguros.com", "informacolombia.com", "registronit.com",
+        "empresite.com", "empresite.eleconomistaamerica.co",
+    }
+    filtered = [
+        e.lower() for e in raw_emails
+        if not any(b in e.lower() for b in blacklist_domains)
+        and len(e) < 80
+    ]
+    # Ordenar por proximidad a palabras de contacto
+    scored = [(e, _score_email_proximity(text, e)) for e in filtered]
+    scored.sort(key=lambda x: -x[1])
+    return [e for e, _ in scored[:max_emails]]
 
 
 def _extract_nit(text: str) -> str | None:
@@ -278,27 +342,34 @@ def enrich_empresa(
     Retorna EnrichResult con score de confianza.
     """
     result = EnrichResult(nombre_buscado=nombre)
-    nit = None
-    nit_sources: list[str] = []
     best_score = 0
     best_source_url = ""
-    best_nombre_encontrado = ""
+    best_nombre_encontrado = nombre
 
-    # ── Paso 1: Buscar NIT ──
-    query_nit = f'"{nombre}" NIT Colombia'
-    results_nit = _search(query_nit, throttle=throttle_search)
+    # ── Paso 1: NIT desde datos.gov.co (API oficial, sin bloqueos) ──
+    nit = _lookup_nit(nombre)
+    if nit:
+        logger.debug("NIT encontrado via datos.gov.co: %s → %s", nombre, nit)
+        best_score = max(best_score, 70)  # Fuente oficial da confianza base
 
-    for res in results_nit[:3]:
-        # Extraer NIT del snippet o título
-        combined = f"{res['title']} {res['snippet']}"
-        found_nit = _extract_nit(combined)
-        if found_nit:
-            if not nit:
-                nit = found_nit
-                nit_sources.append(res["url"])
-            elif found_nit == nit:
-                nit_sources.append(res["url"])  # confirmado en otra fuente
+    # ── Paso 2: Buscar páginas con NIT + nombre en DDG (sin comillas) ──
+    nit_clean = nit.split("-")[0] if nit else ""
+    if nit_clean:
+        query_email = f"{nombre} {nit_clean} contacto Colombia"
+    else:
+        query_email = f"{nombre} contacto email Colombia"
 
+    ddg_results = _ddg_search(query_email, throttle=throttle_search)
+
+    # Priorizar URLs de contacto
+    ddg_results.sort(
+        key=lambda r: 0 if any(kw in r["url"].lower() for kw in CONTACT_URL_KEYWORDS) else 1
+    )
+
+    emails_found: list[str] = []
+    phones_found: list[str] = []
+
+    for res in ddg_results[:3]:
         # Scoring del resultado
         score, detail = compute_score(
             nombre_buscado=nombre,
@@ -306,7 +377,7 @@ def enrich_empresa(
             fuente_url=res["url"],
             ciudad_proceso=ciudad_proceso,
             config=config,
-            nit_multifuente=len(nit_sources) > 1,
+            nit_multifuente=bool(nit),
         )
         if score > best_score:
             best_score = score
@@ -315,70 +386,46 @@ def enrich_empresa(
             result.detalle_score = detail
             result.pagina_web = res["url"]
 
-    # ── Paso 2: Buscar email con NIT ──
-    if nit:
-        query_email = f'"{nombre}" "{nit}" email contacto'
-    else:
-        query_email = f'"{nombre}" email contacto Colombia'
-
-    results_email = _search(query_email, throttle=throttle_search)
-
-    emails_found: list[str] = []
-    phones_found: list[str] = []
-
-    for res in results_email[:2]:
-        # Primero intentar extraer del snippet
-        combined = f"{res['title']} {res['snippet']}"
-        emails_found.extend(_extract_emails(combined))
-        phones_found.extend(_extract_phones(combined))
-
-        # Si no hay email en snippet, visitar la página
-        if not emails_found:
-            page_text = _fetch_page(res["url"], throttle=throttle_page)
-            if page_text:
-                emails_found.extend(_extract_emails(page_text))
-                phones_found.extend(_extract_phones(page_text))
-
-                # Re-scoring con la página visitada
-                score, detail = compute_score(
-                    nombre_buscado=nombre,
-                    nombre_encontrado=res["title"],
-                    fuente_url=res["url"],
-                    ciudad_proceso=ciudad_proceso,
-                    config=config,
-                    nit_multifuente=len(nit_sources) > 1,
-                )
-                if score > best_score:
-                    best_score = score
-                    best_source_url = res["url"]
-                    result.detalle_score = detail
-                    result.pagina_web = res["url"]
+        # Visitar la página y extraer emails/teléfonos
+        page_text = _fetch_page(res["url"], throttle=throttle_page)
+        if page_text:
+            page_emails = _extract_best_emails(page_text)
+            page_phones = _extract_phones(page_text)
+            for e in page_emails:
+                if e not in emails_found:
+                    emails_found.append(e)
+            phones_found.extend(p for p in page_phones if p not in phones_found)
 
         if emails_found:
-            break  # Con un email es suficiente para esta empresa
+            break  # Con al menos un email paramos
 
-    # ── Calcular score final ──
+    # ── Score final ──
     final_score, _ = compute_score(
         nombre_buscado=nombre,
         nombre_encontrado=best_nombre_encontrado,
         fuente_url=best_source_url,
         ciudad_proceso=ciudad_proceso,
         config=config,
-        nit_multifuente=len(nit_sources) > 1,
+        nit_multifuente=bool(nit),
     )
+    # Si encontramos NIT via API oficial, el score base es al menos 70
+    if nit and final_score < 70:
+        final_score = 70
+
     result.score = final_score
     result.nit = nit
     result.email = emails_found[0] if emails_found else None
     result.telefono = phones_found[0] if phones_found else None
-    result.fuente = best_source_url or None
+    result.fuente = best_source_url or (DATOS_GOV_API if nit else None)
 
     # ── Confianza ──
     if final_score >= score_alta and result.email:
         result.confianza = "alta"
     elif final_score >= score_minimo and result.email:
         result.confianza = "media"
-    elif final_score >= score_minimo and not result.email:
-        result.confianza = "nit_only"  # Encontró NIT pero no email
+    elif result.nit and final_score >= 60:
+        # Encontró NIT aunque no email — vale para el Sheet de pendientes
+        result.confianza = "nit_only"
     else:
         result.confianza = "no_encontrado"
         result.email = None  # No aceptar si el score es bajo
