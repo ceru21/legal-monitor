@@ -23,6 +23,22 @@ logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
+
+
+def _load_pipeline_defaults() -> dict[str, Any]:
+    """Carga los defaults del pipeline desde pipeline.yaml."""
+    try:
+        import yaml
+        cfg_path = PROJECT_ROOT / "config" / "pipeline.yaml"
+        if cfg_path.exists():
+            data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+            return data.get("defaults", {})
+    except Exception:
+        pass
+    return {}
+
+
+_DEFAULTS = _load_pipeline_defaults()
 REFERENCE_DESPACHOS = PROJECT_ROOT / "references" / "despachos_medellin_civil_circuito.json"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "runs"
 
@@ -332,11 +348,20 @@ def cli() -> None:
     parser.add_argument("--sheets-dry-run", action="store_true", help="Simula export a Sheets sin escribir nada")
     args = parser.parse_args()
 
+    # Aplicar defaults de pipeline.yaml para valores no pasados por CLI
+    d = _DEFAULTS
+    enrich_2023 = args.enrich_file_2023 or str(PROJECT_ROOT / d.get("enrich_file_2023", ""))
+    enrich_2025 = args.enrich_file_2025 or str(PROJECT_ROOT / d.get("enrich_file_2025", ""))
+    draft_emails = args.draft_emails or bool(d.get("draft_emails", False))
+    gog_account = args.gog_account or d.get("gog_account")
+    draft_filter = args.draft_filter if args.draft_filter != "all_with_email" else d.get("draft_filter", "all_with_email")
+    sheets_report = args.sheets_report or bool(d.get("sheets_report", False))
+
     firma_vars = {
-        "firma_nombre": args.firma_nombre,
-        "abogado_nombre": args.abogado_nombre,
-        "abogado_telefono": args.abogado_telefono,
-        "abogado_email": args.abogado_email,
+        "firma_nombre": args.firma_nombre if args.firma_nombre != "[NOMBRE BUFETE]" else d.get("firma_nombre", "[NOMBRE BUFETE]"),
+        "abogado_nombre": args.abogado_nombre if args.abogado_nombre != "[NOMBRE DEL ABOGADO]" else d.get("abogado_nombre", "[NOMBRE DEL ABOGADO]"),
+        "abogado_telefono": args.abogado_telefono or d.get("abogado_telefono", ""),
+        "abogado_email": args.abogado_email or d.get("abogado_email", ""),
     }
 
     result = run_pipeline(
@@ -344,14 +369,14 @@ def cli() -> None:
         fecha_fin=args.fecha_fin,
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
-        enrich_file_2023=args.enrich_file_2023,
-        enrich_file_2025=args.enrich_file_2025,
-        draft_emails=args.draft_emails,
-        gog_account=args.gog_account,
-        draft_filter=args.draft_filter,
+        enrich_file_2023=enrich_2023 or None,
+        enrich_file_2025=enrich_2025 or None,
+        draft_emails=draft_emails,
+        gog_account=gog_account,
+        draft_filter=draft_filter,
         firma_vars=firma_vars,
         draft_dry_run=args.draft_dry_run,
-        sheets_report=args.sheets_report,
+        sheets_report=sheets_report,
         sheets_dry_run=args.sheets_dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
