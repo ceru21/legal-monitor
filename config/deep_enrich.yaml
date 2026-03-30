@@ -1,0 +1,37 @@
+# deep_enrich.yaml — Configuración del módulo de enriquecimiento profundo (Módulo 9)
+
+# Límites operacionales
+max_empresas_por_run: 100          # Máximo de empresas a enriquecer por ejecución
+max_drafts_por_dia: 30             # Máximo de drafts a crear desde fuentes no verificadas
+
+# Throttling (segundos entre requests)
+throttle_search_s: 3               # Entre búsquedas en internet
+throttle_page_s: 2                 # Entre visitas a páginas de resultados
+
+# Scoring — umbrales de confianza
+score_minimo_aceptar: 70           # Por debajo → no_encontrado
+score_alta_confianza: 90           # Mayor o igual → confianza alta
+
+# Scoring — puntos por criterio
+score_nombre_exacto: 60
+score_nombre_parcial: 30           # Solo si similitud > 85%
+score_fuente_oficial: 20           # supersociedades.gov.co, rues.org.co
+score_fuente_propia: 15            # Dominio de la empresa misma
+score_fuente_directorio: 5         # Cualquier otra fuente
+score_ciudad_coincide: 10
+score_nit_multifuente: 10
+
+# Fuentes oficiales (mayor peso en scoring)
+fuentes_oficiales:
+  - supersociedades.gov.co
+  - rues.org.co
+  - datos.gov.co
+  - dian.gov.co
+
+# Carpeta en Drive para el Sheet de pendientes
+sheets_folder_name: "Legal Monitor — Ejecuciones"
+sheets_pending_prefix: "Legal Monitor Pendientes"
+
+# Log de empresas ya procesadas (TTL 30 días)
+enrich_log_path: "data/enrich_log.jsonl"
+enrich_log_ttl_days: 30

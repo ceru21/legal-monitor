@@ -28,7 +28,7 @@ if [[ "${1:-}" == "gmail" ]] && [[ "${2:-}" == "drafts" ]] && [[ "${3:-}" == "cr
   ALLOWED=true
 fi
 
-if [[ "${1:-}" == "sheets" ]] && [[ "${2:-}" =~ ^(create|add-tab|append|freeze|metadata)$ ]]; then
+if [[ "${1:-}" == "sheets" ]] && [[ "${2:-}" =~ ^(create|add-tab|append|freeze|metadata|update)$ ]]; then
   ALLOWED=true
 fi
 
@@ -38,7 +38,7 @@ fi
 
 if [[ "$ALLOWED" != "true" ]]; then
   echo "ERROR: comando no permitido: $*" >&2
-  echo "Comandos permitidos: gmail drafts create | sheets create/add-tab/append/freeze/metadata | drive ls/mkdir" >&2
+  echo "Comandos permitidos: gmail drafts create | sheets create/add-tab/append/freeze/metadata/update | drive ls/mkdir" >&2
   exit 1
 fi
 
