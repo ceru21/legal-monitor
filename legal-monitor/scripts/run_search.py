@@ -2,26 +2,96 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
-from datetime import datetime
-from pathlib import Path
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
+def _parse_simple_yaml_defaults(text: str) -> dict[str, Any]:
+    """Parser mínimo para `defaults:` cuando PyYAML no está disponible."""
+    defaults: dict[str, Any] = {}
+    in_defaults = False
+
+    for raw_line in text.splitlines():
+        line = raw_line.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+
+        stripped = line.lstrip()
+        indent = len(line) - len(stripped)
+
+        if indent == 0:
+            in_defaults = stripped == "defaults:"
+            continue
+
+        if not in_defaults or indent < 2 or ":" not in stripped:
+            continue
+
+        key, value = stripped.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+
+        if not key:
+            continue
+        if not value:
+            defaults[key] = ""
+            continue
+
+        if value[:1] == value[-1:] and value[:1] in {'"', "'"}:
+            defaults[key] = value[1:-1]
+        elif value.lower() in {"true", "false"}:
+            defaults[key] = value.lower() == "true"
+        else:
+            defaults[key] = value
+
+    return defaults
+
+from blacklist import BlacklistFilter
+from draft_emails import create_drafts
 from enrich_contacts import enrich_records
+from sheets_report import export_to_sheets
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
 from parse_pdf import parse_pdf
 from scraper_portal import DetailDocument, PortalClient, Publication
 from utils import normalize_text, write_json
 
+logger = logging.getLogger(__name__)
+
+SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
+
+
+def _load_pipeline_defaults() -> dict[str, Any]:
+    """Carga los defaults del pipeline desde pipeline.yaml."""
+    cfg_path = PROJECT_ROOT / "config" / "pipeline.yaml"
+    if not cfg_path.exists():
+        return {}
+
+    text = cfg_path.read_text(encoding="utf-8")
+
+    try:
+        import yaml
+        data = yaml.safe_load(text) or {}
+        return data.get("defaults", {})
+    except Exception:
+        return _parse_simple_yaml_defaults(text)
+
+
+_DEFAULTS = _load_pipeline_defaults()
 REFERENCE_DESPACHOS = PROJECT_ROOT / "references" / "despachos_medellin_civil_circuito.json"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "runs"
+
+
+def valid_date(s: str) -> str:
+    try:
+        datetime.strptime(s, "%Y-%m-%d")
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Fecha invalida, use YYYY-MM-DD: {s!r}")
+    return s
 
 
 def sanitize_filename(value: str) -> str:
@@ -90,6 +160,13 @@ def run_pipeline(
     output_root: Path,
     enrich_file_2023: str | None = None,
     enrich_file_2025: str | None = None,
+    draft_emails: bool = False,
+    gog_account: str | None = None,
+    draft_filter: str = "all_with_email",
+    firma_vars: dict[str, str] | None = None,
+    draft_dry_run: bool = False,
+    sheets_report: bool = False,
+    sheets_dry_run: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -98,7 +175,8 @@ def run_pipeline(
     else:
         selected = scope
 
-    run_label = f"medellin_civil_circuito_{fecha_inicio}_a_{fecha_fin}_{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}"
+    run_ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_label = f"medellin_civil_circuito_{fecha_inicio}_a_{fecha_fin}_{run_ts}"
     run_dir = output_root / run_label
     pdf_dir = run_dir / "pdfs"
     export_dir = run_dir / "exports"
@@ -111,75 +189,131 @@ def run_pipeline(
     publications_total = 0
     pdfs_total = 0
 
+    logger.info("Iniciando corrida %s | %d despachos", run_label, len(selected))
+
     for despacho in selected:
         despacho_id = despacho["id"]
-        html_text = client.search_html(fecha_inicio, fecha_fin, id_despacho=despacho_id)
-        publications = client.extract_publications(html_text)
-        publications_total += len(publications)
-        publications_manifest.extend({"despacho_id": despacho_id, **publication.to_dict()} for publication in publications)
+        try:
+            logger.info("Despacho %s — buscando publicaciones", despacho_id)
+            html_text = client.search_html(fecha_inicio, fecha_fin, id_despacho=despacho_id)
+            publications = client.extract_publications(html_text)
+            publications_total += len(publications)
+            publications_manifest.extend({"despacho_id": despacho_id, **publication.to_dict()} for publication in publications)
 
-        if not publications:
-            diagnostics.append({"despacho_id": despacho_id, "despacho": despacho["nombre"], "status": "no_publications"})
-            continue
-
-        for publication in publications:
-            documents = client.fetch_detail_documents(publication.publication_url)
-            pdf_doc = choose_primary_document(documents)
-            selected_docs_manifest.append(
-                {
-                    "despacho_id": despacho_id,
-                    "despacho": publication.despacho,
-                    "publication_id": publication.publication_id,
-                    "publication_url": publication.publication_url,
-                    "documents": [doc.to_dict() for doc in documents],
-                    "selected_pdf": pdf_doc.to_dict() if pdf_doc else None,
-                }
-            )
-            if not pdf_doc:
-                diagnostics.append(
-                    {
-                        "despacho_id": despacho_id,
-                        "despacho": publication.despacho,
-                        "publication_id": publication.publication_id,
-                        "status": "no_primary_pdf",
-                    }
-                )
+            if not publications:
+                logger.info("Despacho %s — sin publicaciones", despacho_id)
+                diagnostics.append({"despacho_id": despacho_id, "despacho": despacho["nombre"], "status": "no_publications"})
                 continue
 
-            pdf_filename = sanitize_filename(f"{despacho_id}_{pdf_doc.label}")
-            if not pdf_filename.lower().endswith(".pdf"):
-                pdf_filename += ".pdf"
-            pdf_path = pdf_dir / pdf_filename
-            client.download_document(pdf_doc.url, pdf_path)
-            pdfs_total += 1
+            logger.info("Despacho %s — %d publicacion(es)", despacho_id, len(publications))
 
-            parsed_rows = [row.to_dict() for row in parse_pdf(pdf_path)]
+            for publication in publications:
+                try:
+                    documents = client.fetch_detail_documents(publication.publication_url)
+                    pdf_doc = choose_primary_document(documents)
+                    selected_docs_manifest.append(
+                        {
+                            "despacho_id": despacho_id,
+                            "despacho": publication.despacho,
+                            "publication_id": publication.publication_id,
+                            "publication_url": publication.publication_url,
+                            "documents": [doc.to_dict() for doc in documents],
+                            "selected_pdf": pdf_doc.to_dict() if pdf_doc else None,
+                        }
+                    )
+                    if not pdf_doc:
+                        diagnostics.append(
+                            {
+                                "despacho_id": despacho_id,
+                                "despacho": publication.despacho,
+                                "publication_id": publication.publication_id,
+                                "status": "no_primary_pdf",
+                            }
+                        )
+                        continue
+
+                    pdf_filename = sanitize_filename(f"{despacho_id}_{pdf_doc.label}")
+                    if not pdf_filename.lower().endswith(".pdf"):
+                        pdf_filename += ".pdf"
+                    pdf_path = pdf_dir / pdf_filename
+                    client.download_document(pdf_doc.url, pdf_path)
+                    pdfs_total += 1
+                    logger.info("PDF descargado: %s", pdf_filename)
+
+                    parsed_rows = [row.to_dict() for row in parse_pdf(pdf_path)]
+                    logger.info("PDF %s — %d filas extraidas", pdf_filename, len(parsed_rows))
+                    diagnostics.append(
+                        {
+                            "despacho_id": despacho_id,
+                            "despacho": publication.despacho,
+                            "publication_id": publication.publication_id,
+                            "status": "ok",
+                            "pdf": pdf_filename,
+                            "rows": len(parsed_rows),
+                        }
+                    )
+                    for row in parsed_rows:
+                        records.append(
+                            merge_record_context(
+                                run_label=run_label,
+                                fecha_inicio=fecha_inicio,
+                                fecha_fin=fecha_fin,
+                                despacho_id=despacho_id,
+                                publication=publication,
+                                pdf_doc=pdf_doc,
+                                pdf_path=pdf_path,
+                                row=row,
+                            )
+                        )
+                except Exception as exc:
+                    logger.error("despacho=%s pub=%s: %s", despacho_id, publication.publication_id, exc)
+                    diagnostics.append(
+                        {
+                            "despacho_id": despacho_id,
+                            "despacho": publication.despacho,
+                            "publication_id": publication.publication_id,
+                            "status": "error",
+                            "error": str(exc),
+                        }
+                    )
+
+        except Exception as exc:
+            logger.error("despacho=%s: %s", despacho_id, exc)
             diagnostics.append(
                 {
                     "despacho_id": despacho_id,
-                    "despacho": publication.despacho,
-                    "publication_id": publication.publication_id,
-                    "status": "ok",
-                    "pdf": pdf_filename,
-                    "rows": len(parsed_rows),
+                    "despacho": despacho.get("nombre"),
+                    "status": "error",
+                    "error": str(exc),
                 }
             )
-            for row in parsed_rows:
-                records.append(
-                    merge_record_context(
-                        run_label=run_label,
-                        fecha_inicio=fecha_inicio,
-                        fecha_fin=fecha_fin,
-                        despacho_id=despacho_id,
-                        publication=publication,
-                        pdf_doc=pdf_doc,
-                        pdf_path=pdf_path,
-                        row=row,
-                    )
-                )
+
+    logger.info("Corrida completada — %d publicaciones, %d PDFs, %d filas", publications_total, pdfs_total, len(records))
 
     if enrich_file_2023 and enrich_file_2025:
         records = enrich_records(records, enrich_file_2023, enrich_file_2025)
+
+    # Blacklist — último filtro antes de drafts
+    _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
+    bf = BlacklistFilter.from_yaml(_blacklist_path)
+    records = bf.apply(records)
+    blacklisted_count = sum(1 for r in records if r.get("blacklisted"))
+    if blacklisted_count:
+        logger.info("Blacklist: %d registros marcados como excluidos", blacklisted_count)
+
+    if draft_emails:
+        from pathlib import Path as _Path
+        _template = PROJECT_ROOT / "config" / "email_template.html.jinja2"
+        _draft_log = output_root / "draft_log.jsonl"
+        records = create_drafts(
+            records=records,
+            template_path=_template,
+            gog_account=gog_account,
+            draft_log_path=_draft_log,
+            filter_mode=draft_filter,
+            firma_vars=firma_vars or {},
+            dry_run=draft_dry_run,
+        )
 
     metadata = {
         "fecha_inicio": fecha_inicio,
@@ -188,6 +322,8 @@ def run_pipeline(
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
         "enrichment_enabled": bool(enrich_file_2023 and enrich_file_2025),
+        "draft_emails_enabled": draft_emails,
+        "sheets_report_enabled": sheets_report,
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -196,34 +332,95 @@ def run_pipeline(
     write_json(diagnostics_dir / "selected_documents.json", selected_docs_manifest)
     write_json(diagnostics_dir / "pipeline_diagnostics.json", diagnostics)
 
+    sheets_result: dict[str, Any] = {}
+    if sheets_report and gog_account:
+        logger.info("Exportando a Google Sheets...")
+        try:
+            sheets_result = export_to_sheets(
+                run_label=run_label,
+                records=records,
+                account=gog_account,
+                dry_run=sheets_dry_run,
+            )
+            logger.info("Sheets: %s", sheets_result.get("sheet_url", "dry-run"))
+        except Exception as exc:
+            logger.error("Sheets export fallido: %s", exc)
+            sheets_result = {"error": str(exc)}
+
     result = {
         "run_label": run_label,
         "run_dir": str(run_dir),
         "metadata": metadata,
         "exports": outputs,
         "diagnostics": str(diagnostics_dir / "pipeline_diagnostics.json"),
+        "sheets": sheets_result or None,
     }
     write_json(run_dir / "run_result.json", result)
     return result
 
 
 def cli() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s — %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S",
+        stream=sys.stderr,
+    )
+
     parser = argparse.ArgumentParser(description="Flujo end-to-end para Medellín civil circuito")
-    parser.add_argument("--fecha-inicio", required=True)
-    parser.add_argument("--fecha-fin", required=True)
+    parser.add_argument("--fecha-inicio", required=True, type=valid_date)
+    parser.add_argument("--fecha-fin", required=True, type=valid_date)
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--enrich-file-2023")
     parser.add_argument("--enrich-file-2025")
+    parser.add_argument("--draft-emails", action="store_true", help="Crear borradores Gmail para registros con email")
+    parser.add_argument("--gog-account", help="Cuenta Gmail autenticada en gog")
+    parser.add_argument(
+        "--draft-filter",
+        default="all_with_email",
+        choices=["all_with_email", "accepted_and_review", "accepted_only"],
+        help="Modo de filtro para creación de drafts",
+    )
+    parser.add_argument("--firma-nombre", default="[NOMBRE BUFETE]")
+    parser.add_argument("--abogado-nombre", default="[NOMBRE DEL ABOGADO]")
+    parser.add_argument("--abogado-telefono", default="")
+    parser.add_argument("--abogado-email", default="")
+    parser.add_argument("--draft-dry-run", action="store_true", help="Simula drafts sin crearlos en Gmail")
+    parser.add_argument("--sheets-report", action="store_true", help="Exportar resultados a Google Sheets")
+    parser.add_argument("--sheets-dry-run", action="store_true", help="Simula export a Sheets sin escribir nada")
     args = parser.parse_args()
+
+    # Aplicar defaults de pipeline.yaml para valores no pasados por CLI
+    d = _DEFAULTS
+    enrich_2023 = args.enrich_file_2023 or str(PROJECT_ROOT / d.get("enrich_file_2023", ""))
+    enrich_2025 = args.enrich_file_2025 or str(PROJECT_ROOT / d.get("enrich_file_2025", ""))
+    draft_emails = args.draft_emails or bool(d.get("draft_emails", False))
+    gog_account = args.gog_account or d.get("gog_account")
+    draft_filter = args.draft_filter if args.draft_filter != "all_with_email" else d.get("draft_filter", "all_with_email")
+    sheets_report = args.sheets_report or bool(d.get("sheets_report", False))
+
+    firma_vars = {
+        "firma_nombre": args.firma_nombre if args.firma_nombre != "[NOMBRE BUFETE]" else d.get("firma_nombre", "[NOMBRE BUFETE]"),
+        "abogado_nombre": args.abogado_nombre if args.abogado_nombre != "[NOMBRE DEL ABOGADO]" else d.get("abogado_nombre", "[NOMBRE DEL ABOGADO]"),
+        "abogado_telefono": args.abogado_telefono or d.get("abogado_telefono", ""),
+        "abogado_email": args.abogado_email or d.get("abogado_email", ""),
+    }
 
     result = run_pipeline(
         fecha_inicio=args.fecha_inicio,
         fecha_fin=args.fecha_fin,
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
-        enrich_file_2023=args.enrich_file_2023,
-        enrich_file_2025=args.enrich_file_2025,
+        enrich_file_2023=enrich_2023 or None,
+        enrich_file_2025=enrich_2025 or None,
+        draft_emails=draft_emails,
+        gog_account=gog_account,
+        draft_filter=draft_filter,
+        firma_vars=firma_vars,
+        draft_dry_run=args.draft_dry_run,
+        sheets_report=sheets_report,
+        sheets_dry_run=args.sheets_dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 
