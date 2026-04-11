@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -12,14 +13,20 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from enrich_contacts import enrich_records
+PROJECT_ROOT = SCRIPT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from enrich_contacts import enrich_records_from_db
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
 from parse_pdf import parse_pdf
 from scraper_portal import DetailDocument, PortalClient, Publication
 from utils import normalize_text, write_json
+from validators import sanitize_exception, validate_date, validate_despacho_id
 
-PROJECT_ROOT = SCRIPT_DIR.parent
+logger = logging.getLogger("legal_monitor.run_search")
+
 REFERENCE_DESPACHOS = PROJECT_ROOT / "references" / "despachos_medellin_civil_circuito.json"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "runs"
 
@@ -88,8 +95,7 @@ def run_pipeline(
     fecha_fin: str,
     despacho_ids: list[str] | None,
     output_root: Path,
-    enrich_file_2023: str | None = None,
-    enrich_file_2025: str | None = None,
+    no_db: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -178,8 +184,32 @@ def run_pipeline(
                     )
                 )
 
-    if enrich_file_2023 and enrich_file_2025:
-        records = enrich_records(records, enrich_file_2023, enrich_file_2025)
+    enrichment_enabled = False
+    if not no_db:
+        try:
+            from db import get_session
+            from db.repository import save_run
+            with get_session() as session:
+                records = enrich_records_from_db(records, session)
+                enrichment_enabled = True
+                metadata_for_save = {
+                    "fecha_inicio": fecha_inicio,
+                    "fecha_fin": fecha_fin,
+                    "despachos_total": len(selected),
+                    "publications_total": publications_total,
+                    "pdfs_total": pdfs_total,
+                    "enrichment_enabled": True,
+                }
+                save_run(
+                    run_label=run_label,
+                    fecha_inicio=fecha_inicio,
+                    fecha_fin=fecha_fin,
+                    metadata=metadata_for_save,
+                    records=records,
+                    session=session,
+                )
+        except Exception as exc:
+            logger.warning("DB enrichment/persistence failed: %s. Continuing without DB.", sanitize_exception(exc))
 
     metadata = {
         "fecha_inicio": fecha_inicio,
@@ -187,7 +217,7 @@ def run_pipeline(
         "despachos_total": len(selected),
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
-        "enrichment_enabled": bool(enrich_file_2023 and enrich_file_2025),
+        "enrichment_enabled": enrichment_enabled,
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -208,22 +238,33 @@ def run_pipeline(
 
 
 def cli() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
     parser = argparse.ArgumentParser(description="Flujo end-to-end para Medellín civil circuito")
     parser.add_argument("--fecha-inicio", required=True)
     parser.add_argument("--fecha-fin", required=True)
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
-    parser.add_argument("--enrich-file-2023")
-    parser.add_argument("--enrich-file-2025")
+    parser.add_argument("--no-db", action="store_true", help="Saltar enriquecimiento y persistencia en PostgreSQL")
     args = parser.parse_args()
+
+    try:
+        validate_date(args.fecha_inicio)
+        validate_date(args.fecha_fin)
+        if args.despacho_id:
+            for did in args.despacho_id:
+                validate_despacho_id(did)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     result = run_pipeline(
         fecha_inicio=args.fecha_inicio,
         fecha_fin=args.fecha_fin,
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
-        enrich_file_2023=args.enrich_file_2023,
-        enrich_file_2025=args.enrich_file_2025,
+        no_db=args.no_db,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

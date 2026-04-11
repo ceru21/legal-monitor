@@ -21,6 +21,7 @@ Ver:
 
 ## Estructura
 - `config/`: configuración del pipeline y patrones
+- `db/`: modelos SQLAlchemy, schema init e importación de contactos
 - `references/`: documentación técnica del portal y catálogos de apoyo
 - `scripts/`: código fuente del scraper y utilidades
 - `tests/`: fixtures y ground truth inicial
@@ -37,6 +38,57 @@ Instalar dependencias Node:
 
 ```bash
 npm install
+```
+
+## Setup local
+
+### Requisitos
+- Python 3.11+
+- Docker y Docker Compose
+
+### Pasos
+
+1. Instalar dependencias Python:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Configurar variables de entorno:
+   ```bash
+   cp .env.example .env
+   # Editar .env — como mínimo definir POSTGRES_PASSWORD
+   ```
+
+3. Levantar PostgreSQL:
+   ```bash
+   docker compose up -d
+   ```
+   Verificar que el healthcheck pasa:
+   ```bash
+   docker compose ps  # debe mostrar (healthy)
+   ```
+
+4. Crear las tablas:
+   ```bash
+   python -m db.init_schema
+   ```
+
+5. (Opcional) Importar contactos de Cámara de Comercio:
+   ```bash
+   python -m db.import_contacts --file /ruta/al/archivo.TXT --label colombia_2026
+   ```
+
+### Ejecutar sin base de datos
+
+El pipeline puede correr sin PostgreSQL usando la flag `--no-db`:
+```bash
+python scripts/run_search.py --fecha-inicio 2024-01-01 --fecha-fin 2024-01-31 --no-db
+```
+
+### Tests
+```bash
+pip install -r requirements-test.txt
+pytest
 ```
 
 ## Archivos clave

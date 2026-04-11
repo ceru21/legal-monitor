@@ -1,0 +1,6 @@
+razon_social,correo_comercial,ciudad,nit
+ACME S.A.S.,contacto@acme.com,Medellin,900111222-1
+GLOBAL TRADE LTDA,info@globaltrade.com,Bogota,800333444-5
+TECNOLOGIAS DEL FUTURO S.A.,ventas@tecfuturo.co,Cali,700555666-0
+INVERSIONES ABC,,Barranquilla,600777888-3
+DISTRIBUIDORA XYZ S A,ventas@xyz.com,Medellin,500999000-7

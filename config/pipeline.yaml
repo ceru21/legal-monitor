@@ -20,3 +20,6 @@ output:
   save_parsed_json: true
   export_csv: true
   export_json: true
+
+database:
+  source_label: colombia_2026

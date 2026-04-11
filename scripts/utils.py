@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
 import re
 import unicodedata
 from pathlib import Path
@@ -37,6 +38,7 @@ def write_json(path: str | Path, data: object) -> None:
     path = ensure_parent(path)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    os.chmod(path, 0o600)
 
 
 def write_csv(path: str | Path, rows: Iterable[dict]) -> None:
@@ -45,9 +47,16 @@ def write_csv(path: str | Path, rows: Iterable[dict]) -> None:
     if not rows:
         with open(path, "w", encoding="utf-8", newline="") as f:
             f.write("")
+        os.chmod(path, 0o600)
         return
     fieldnames = list(rows[0].keys())
     with open(path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            # Serialize list values as semicolon-separated strings for CSV compatibility
+            writer.writerow({
+                k: ";".join(v) if isinstance(v, list) else v
+                for k, v in row.items()
+            })
+    os.chmod(path, 0o600)

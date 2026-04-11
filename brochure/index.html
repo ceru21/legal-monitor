@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LegalMonitor — Su agente de IA para el despacho judicial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ============================================================
+       VARIABLES
+    ============================================================ */
+    :root {
+      --navy:       #1a2332;
+      --navy-light: #243042;
+      --teal:       #0ea5e9;
+      --teal-dark:  #0284c7;
+      --gold:       #f59e0b;
+      --gold-light: #fbbf24;
+      --cream:      #f7f4ee;
+      --white:      #ffffff;
+      --gray-50:    #f8fafc;
+      --gray-100:   #f1f5f9;
+      --gray-200:   #e2e8f0;
+      --gray-400:   #94a3b8;
+      --gray-600:   #475569;
+      --gray-800:   #1e293b;
+      --green:      #10b981;
+      --font-body:  'Inter', system-ui, sans-serif;
+      --font-head:  'Plus Jakarta Sans', 'Inter', sans-serif;
+      --slide-w:    960px;
+      --slide-h:    540px;
+    }
+
+    /* ============================================================
+       RESET & BODY
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      font-family: var(--font-body);
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      gap: 24px;
+    }
+
+    /* ============================================================
+       SLIDE BASE
+    ============================================================ */
+    .slide {
+      width: var(--slide-w);
+      height: var(--slide-h);
+      position: relative;
+      overflow: hidden;
+      background: var(--navy);
+      border-radius: 12px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       SLIDE COUNTER
+    ============================================================ */
+    .slide-counter {
+      position: absolute;
+      bottom: 18px;
+      right: 24px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      letter-spacing: 0.05em;
+      z-index: 10;
+    }
+
+    /* ============================================================
+       SLIDE 1 — PORTADA
+    ============================================================ */
+    .s1 {
+      background: linear-gradient(135deg, #0f1823 0%, var(--navy) 55%, #1c3048 100%);
+      display: flex;
+      align-items: center;
+      padding: 0 72px;
+    }
+    .s1-left {
+      flex: 1;
+    }
+    .s1-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14,165,233,0.15);
+      border: 1px solid rgba(14,165,233,0.35);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--teal);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 22px;
+    }
+    .s1-logo {
+      font-family: var(--font-head);
+      font-size: 58px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+    .s1-logo span { color: var(--teal); }
+    .s1-sub {
+      font-size: 18px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 36px;
+      max-width: 380px;
+      line-height: 1.5;
+    }
+    .s1-stats {
+      display: flex;
+      gap: 28px;
+    }
+    .s1-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .s1-stat-val {
+      font-family: var(--font-head);
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--gold);
+    }
+    .s1-stat-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .s1-right {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 220px;
+      flex-shrink: 0;
+    }
+    .s1-bot-ring {
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(14,165,233,0.08);
+      border: 2px solid rgba(14,165,233,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .s1-bot-ring::before {
+      content: '';
+      position: absolute;
+      inset: -12px;
+      border-radius: 50%;
+      border: 1px dashed rgba(14,165,233,0.2);
+    }
+
+    /* ============================================================
+       SLIDE 2 — PROBLEMA
+    ============================================================ */
+    .s2 {
+      background: linear-gradient(160deg, #0f1823 0%, var(--navy) 100%);
+      display: flex;
+      flex-direction: column;
+      padding: 40px 64px;
+    }
+    .slide-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 8px;
+    }
+    .slide-title {
+      font-family: var(--font-head);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+    .slide-title .hl-gold { color: var(--gold); }
+    .slide-title .hl-teal { color: var(--teal); }
+    .slide-sub {
+      font-size: 14px;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 28px;
+    }
+    .problem-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .problem-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 18px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .problem-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .problem-icon.red   { background: rgba(239,68,68,0.15); }
+    .problem-icon.amber { background: rgba(245,158,11,0.15); }
+    .problem-icon.blue  { background: rgba(14,165,233,0.15); }
+    .problem-icon.purple{ background: rgba(168,85,247,0.15); }
+    .problem-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--white);
+      line-height: 1.3;
+    }
+    .problem-desc {
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.5);
+      line-height: 1.5;
+    }
+    .problem-note {
+      background: rgba(245,158,11,0.1);
+      border: 1px solid rgba(245,158,11,0.25);
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 12.5px;
+      color: var(--gold-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ============================================================
+       SLIDE 3 — EL AGENTE
+    ============================================================ */
+    .s3 {
+      background: linear-gradient(150deg, #0d1a26 0%, var(--navy) 100%);
+      display: flex;
+      padding: 40px 64px;
+      gap: 48px;
+      align-items: center;
+    }
+    .s3-left {
+      flex: 1;
+    }
+    .s3-desc {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.7;
+      margin-bottom: 24px;
+      max-width: 340px;
+    }
+    .s3-right {
+      width: 320px;
+      flex-shrink: 0;
+      position: relative;
+      height: 320px;
+    }
+    /* Hub diagram */
+    .hub-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 8px rgba(14,165,233,0.1), 0 0 0 16px rgba(14,165,233,0.05);
+      z-index: 5;
+    }
+    .hub-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: white;
+      text-align: center;
+      line-height: 1.2;
+      margin-top: 4px;
+    }
+    .hub-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      border: 1px dashed rgba(14,165,233,0.2);
+    }
+    .skill-node {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      text-align: center;
+    }
+    .skill-node.active {
+      background: rgba(14,165,233,0.15);
+      border: 1.5px solid rgba(14,165,233,0.5);
+    }
+    .skill-node.inactive {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .skill-node-label {
+      font-size: 9.5px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .skill-node.active .skill-node-label { color: var(--teal); }
+    .skill-node.inactive .skill-node-label { color: rgba(255,255,255,0.35); }
+    .skill-badge {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--teal);
+      color: white;
+    }
+    /* Positions (centered at 160,160) */
+    .skill-n1 { top: 6px;  left: 80px; }  /* top */
+    .skill-n2 { top: 55px; right: 8px; }  /* top-right */
+    .skill-n3 { bottom: 55px; right: 8px; } /* bottom-right */
+    .skill-n4 { bottom: 6px; left: 80px; } /* bottom */
+    .skill-n5 { top: 55px; left: 8px; }  /* top-left */
+
+    /* ============================================================
+       SLIDE 4 — HABILIDAD 1
+    ============================================================ */
+    .s4 {
+      background: linear-gradient(150deg, #0d1a26 0%, var(--navy) 100%);
+      display: flex;
+      flex-direction: column;
+      padding: 36px 64px;
+    }
+    .pipeline-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 28px;
+    }
+    .pipe-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex: 1;
+    }
+    .pipe-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(14,165,233,0.12);
+      border: 1px solid rgba(14,165,233,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pipe-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--teal);
+      text-align: center;
+      line-height: 1.3;
+    }
+    .pipe-arrow {
+      color: rgba(14,165,233,0.4);
+      font-size: 18px;
+      flex-shrink: 0;
+      margin-bottom: 18px;
+    }
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+    .metric-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .metric-val {
+      font-family: var(--font-head);
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .metric-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.45);
+      line-height: 1.4;
+    }
+
+    /* ============================================================
+       SLIDE 5 — DEMO TELEGRAM
+    ============================================================ */
+    .s5 {
+      background: linear-gradient(135deg, #0d1a26 0%, var(--navy) 100%);
+      display: flex;
+      padding: 36px 56px;
+      gap: 40px;
+      align-items: flex-start;
+    }
+    .s5-left { flex: 1; }
+    .tg-window {
+      background: #17212b;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      width: 100%;
+    }
+    .tg-header {
+      background: #232e3c;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .tg-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .tg-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: white;
+    }
+    .tg-status {
+      font-size: 10px;
+      color: var(--green);
+    }
+    .tg-body {
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tg-msg-out {
+      align-self: flex-end;
+      background: #2b5278;
+      border-radius: 12px 12px 2px 12px;
+      padding: 7px 12px;
+      font-size: 12px;
+      color: white;
+      max-width: 85%;
+    }
+    .tg-msg-in {
+      align-self: flex-start;
+      background: #182533;
+      border-radius: 12px 12px 12px 2px;
+      padding: 8px 12px;
+      font-size: 11.5px;
+      color: rgba(255,255,255,0.85);
+      max-width: 95%;
+      border: 1px solid rgba(14,165,233,0.15);
+    }
+    .tg-cmd { color: var(--teal); font-weight: 700; }
+    .tg-case {
+      border-left: 2px solid var(--teal);
+      padding-left: 8px;
+      margin: 4px 0;
+      font-size: 11px;
+    }
+    .tg-case-title { font-weight: 700; color: var(--white); }
+    .tg-case-detail { color: rgba(255,255,255,0.55); }
+    .badge-accepted {
+      display: inline-block;
+      background: rgba(16,185,129,0.2);
+      color: #34d399;
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .badge-review {
+      display: inline-block;
+      background: rgba(245,158,11,0.2);
+      color: var(--gold-light);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .s5-right {
+      width: 240px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .report-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .report-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+    }
+    .report-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .report-row:last-child { border-bottom: none; }
+    .report-row .lbl { color: rgba(255,255,255,0.5); }
+    .report-row .val { font-weight: 700; color: var(--white); }
+    .report-row .val.teal { color: var(--teal); }
+    .report-row .val.gold { color: var(--gold); }
+    .report-row .val.green { color: var(--green); }
+
+    /* ============================================================
+       SLIDE 6 — HABILIDADES A SU MEDIDA
+    ============================================================ */
+    .s6 {
+      background: linear-gradient(150deg, #0d1a26 0%, var(--navy) 100%);
+      display: flex;
+      padding: 36px 64px;
+      gap: 48px;
+      align-items: center;
+    }
+    .s6-left {
+      flex: 1;
+    }
+    .s6-desc {
+      font-size: 13.5px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.7;
+      margin-bottom: 20px;
+      max-width: 330px;
+    }
+    .s6-note {
+      background: rgba(14,165,233,0.08);
+      border: 1px solid rgba(14,165,233,0.2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+      line-height: 1.5;
+    }
+    .s6-note strong { color: var(--teal); }
+    .s6-right {
+      width: 340px;
+      flex-shrink: 0;
+      position: relative;
+      height: 300px;
+    }
+    /* Large hub for slide 6 */
+    .hub6-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 10px rgba(14,165,233,0.08), 0 0 0 20px rgba(14,165,233,0.04);
+      z-index: 5;
+    }
+    .hub6-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      border: 1px dashed rgba(14,165,233,0.18);
+    }
+    .s6-node {
+      position: absolute;
+      width: 86px;
+      border-radius: 10px;
+      padding: 10px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      text-align: center;
+    }
+    .s6-node.active-node {
+      background: rgba(14,165,233,0.13);
+      border: 1.5px solid rgba(14,165,233,0.45);
+    }
+    .s6-node.inactive-node {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .s6-node-lbl {
+      font-size: 9.5px;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+    .s6-node.active-node .s6-node-lbl { color: var(--teal); }
+    .s6-node.inactive-node .s6-node-lbl { color: rgba(255,255,255,0.3); }
+    .s6-badge {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      background: var(--teal);
+      color: white;
+    }
+    .s6-badge-idea {
+      font-size: 8px;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.3);
+      border: 1px dashed rgba(255,255,255,0.15);
+    }
+    /* Node positions around 170,150 center */
+    .s6n1 { top: 2px;  left: 42px; }
+    .s6n2 { top: 50px; right: 2px; }
+    .s6n3 { bottom: 50px; right: 2px; }
+    .s6n4 { bottom: 2px; left: 42px; }
+    .s6n5 { top: 50px; left: 2px; }
+
+    /* ============================================================
+       SLIDE 7 — PRECIOS
+    ============================================================ */
+    .s7 {
+      background: var(--white);
+      display: flex;
+      flex-direction: column;
+      padding: 36px 56px;
+    }
+    .s7 .slide-eyebrow { color: var(--teal-dark); }
+    .s7 .slide-title { color: var(--gray-800); }
+    .s7 .slide-sub { color: var(--gray-600); }
+    .pricing-layout {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .pricing-main {
+      flex: 1;
+      background: var(--gray-50);
+      border: 2px solid var(--teal);
+      border-radius: 14px;
+      padding: 22px 24px;
+      position: relative;
+    }
+    .pricing-main-tag {
+      position: absolute;
+      top: -12px;
+      left: 20px;
+      background: var(--teal);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 12px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .pricing-name {
+      font-family: var(--font-head);
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--gray-800);
+      margin-bottom: 4px;
+    }
+    .pricing-price {
+      font-family: var(--font-head);
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--teal-dark);
+      line-height: 1;
+      margin-bottom: 2px;
+    }
+    .pricing-period {
+      font-size: 12px;
+      color: var(--gray-600);
+      margin-bottom: 14px;
+    }
+    .pricing-includes {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pricing-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--gray-800);
+    }
+    .pricing-item svg { flex-shrink: 0; margin-top: 1px; }
+    .pricing-skills {
+      width: 260px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .skills-header {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .skill-price-row {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .skill-price-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 6px;
+      background: rgba(14,165,233,0.1);
+      border: 1px solid rgba(14,165,233,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .skill-price-name {
+      flex: 1;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+    .skill-price-val {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--teal-dark);
+    }
+    .pricing-example {
+      background: rgba(245,158,11,0.08);
+      border: 1px solid rgba(245,158,11,0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #92400e;
+    }
+    .pricing-example strong { color: #b45309; }
+    .pricing-free {
+      background: rgba(16,185,129,0.08);
+      border: 1px solid rgba(16,185,129,0.3);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11.5px;
+      color: #065f46;
+      margin-top: 4px;
+    }
+
+    /* ============================================================
+       SLIDE 8 — CIERRE
+    ============================================================ */
+    .s8 {
+      background: linear-gradient(135deg, #0a1520 0%, var(--navy) 50%, #0f2235 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 80px;
+    }
+    .s8-headline {
+      font-family: var(--font-head);
+      font-size: 34px;
+      font-weight: 800;
+      color: var(--white);
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+    .s8-headline .hl { color: var(--teal); }
+    .s8-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.55);
+      margin-bottom: 32px;
+      max-width: 500px;
+    }
+    .s8-badges {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .s8-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.8);
+    }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+      color: white;
+      font-family: var(--font-head);
+      font-size: 16px;
+      font-weight: 700;
+      padding: 14px 32px;
+      border-radius: 32px;
+      box-shadow: 0 4px 20px rgba(14,165,233,0.3);
+      text-decoration: none;
+    }
+
+    /* ============================================================
+       PRINT
+    ============================================================ */
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+        gap: 0;
+      }
+      .slide {
+        border-radius: 0;
+        box-shadow: none;
+        page-break-after: always;
+        break-after: page;
+        margin: 0;
+        width: 100%;
+        height: auto;
+        min-height: 540px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       SLIDE 1 — PORTADA
+  ============================================================ -->
+  <section class="slide s1">
+    <div class="s1-left">
+      <div class="s1-tag">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.3-6.7-2.1 2.1M8.4 15.6l-2.1 2.1m0-11.4 2.1 2.1m6.3 6.3 2.1 2.1"/></svg>
+        Automatización inteligente para bufetes
+      </div>
+      <div class="s1-logo">Legal<span>Monitor</span></div>
+      <div class="s1-sub">Su agente de IA para el despacho judicial. Automatiza lo manual. Detecta lo que importa.</div>
+      <div class="s1-stats">
+        <div class="s1-stat">
+          <div class="s1-stat-val">1.030</div>
+          <div class="s1-stat-lbl">Registros procesados</div>
+        </div>
+        <div class="s1-stat">
+          <div class="s1-stat-val">481</div>
+          <div class="s1-stat-lbl">Casos relevantes</div>
+        </div>
+        <div class="s1-stat">
+          <div class="s1-stat-val">90</div>
+          <div class="s1-stat-lbl">Contactos encontrados</div>
+        </div>
+      </div>
+    </div>
+    <div class="s1-right">
+      <div class="s1-bot-ring">
+        <!-- Bot / Agent icon -->
+        <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+          <rect x="16" y="28" width="48" height="36" rx="10" fill="rgba(14,165,233,0.2)" stroke="rgba(14,165,233,0.6)" stroke-width="1.5"/>
+          <rect x="28" y="40" width="10" height="10" rx="3" fill="#0ea5e9"/>
+          <rect x="42" y="40" width="10" height="10" rx="3" fill="#0ea5e9"/>
+          <rect x="32" y="54" width="16" height="3" rx="1.5" fill="rgba(14,165,233,0.5)"/>
+          <rect x="36" y="20" width="8" height="10" rx="2" fill="rgba(14,165,233,0.4)" stroke="rgba(14,165,233,0.5)" stroke-width="1.2"/>
+          <circle cx="40" cy="18" r="3.5" fill="#0ea5e9"/>
+          <rect x="8" y="36" width="8" height="16" rx="4" fill="rgba(14,165,233,0.25)" stroke="rgba(14,165,233,0.4)" stroke-width="1.2"/>
+          <rect x="64" y="36" width="8" height="16" rx="4" fill="rgba(14,165,233,0.25)" stroke="rgba(14,165,233,0.4)" stroke-width="1.2"/>
+        </svg>
+      </div>
+    </div>
+    <div class="slide-counter">1 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 2 — EL PROBLEMA
+  ============================================================ -->
+  <section class="slide s2">
+    <div class="slide-eyebrow">El problema</div>
+    <div class="slide-title">El trabajo manual le <span class="hl-gold">cuesta casos</span> y horas facturables</div>
+    <div class="slide-sub">Cada día sin monitoreo automatizado es una oportunidad perdida</div>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-icon red">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <div class="problem-title">Tiempo no facturable</div>
+        <div class="problem-desc">2-3 horas/día revisando el portal de la Rama Judicial manualmente</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        </div>
+        <div class="problem-title">Casos que se escapan</div>
+        <div class="problem-desc">Demandas relevantes publicadas y no detectadas a tiempo</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="problem-title">Sin datos de contacto</div>
+        <div class="problem-desc">Identificar a los demandados requiere búsquedas manuales adicionales</div>
+      </div>
+      <div class="problem-card">
+        <div class="problem-icon purple">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        </div>
+        <div class="problem-title">Sin trazabilidad</div>
+        <div class="problem-desc">No hay registro histórico ni métricas de lo revisado cada día</div>
+      </div>
+    </div>
+    <div class="problem-note">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Un asistente humano cubre aproximadamente 3 despachos por día. Son 22 despachos en el circuito de Medellín.
+    </div>
+    <div class="slide-counter">2 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 3 — EL AGENTE
+  ============================================================ -->
+  <section class="slide s3">
+    <div class="s3-left">
+      <div class="slide-eyebrow">La solución</div>
+      <div class="slide-title">Un <span class="hl-teal">agente de IA</span> que trabaja 24/7 por su bufete</div>
+      <div class="s3-desc">
+        LegalMonitor no es una herramienta puntual. Es un agente con habilidades que se amplía
+        según las necesidades de su operación. La primera habilidad ya está activa.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:rgba(255,255,255,0.7)">
+          <div style="width:28px;height:28px;border-radius:6px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          Opera desde Telegram — sin apps adicionales
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:rgba(255,255,255,0.7)">
+          <div style="width:28px;height:28px;border-radius:6px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          Monitorea los 22 despachos civiles en minutos
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;font-size:12.5px;color:rgba(255,255,255,0.7)">
+          <div style="width:28px;height:28px;border-radius:6px;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          Nuevas habilidades se construyen a su medida
+        </div>
+      </div>
+    </div>
+    <div class="s3-right">
+      <div class="hub-ring"></div>
+      <div class="hub-center">
+        <svg width="32" height="32" viewBox="0 0 80 80" fill="none">
+          <rect x="16" y="24" width="48" height="36" rx="9" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+          <rect x="28" y="36" width="9" height="9" rx="2.5" fill="white"/>
+          <rect x="43" y="36" width="9" height="9" rx="2.5" fill="white"/>
+          <rect x="33" y="50" width="14" height="3" rx="1.5" fill="rgba(255,255,255,0.5)"/>
+          <rect x="36" y="16" width="8" height="10" rx="2" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>
+          <circle cx="40" cy="14" r="3" fill="white"/>
+        </svg>
+        <div class="hub-label">Agente<br>IA</div>
+      </div>
+      <!-- skill nodes -->
+      <div class="skill-node active skill-n1">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+        <div class="skill-node-label">Monitoreo demandas</div>
+        <span class="skill-badge">Activa</span>
+      </div>
+      <div class="skill-node inactive skill-n2">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div class="skill-node-label">Alertas de términos</div>
+      </div>
+      <div class="skill-node inactive skill-n3">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <div class="skill-node-label">Borradores email</div>
+      </div>
+      <div class="skill-node inactive skill-n4">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <div class="skill-node-label">Enriquecimiento leads</div>
+      </div>
+      <div class="skill-node inactive skill-n5">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+        <div class="skill-node-label">Más habilidades</div>
+      </div>
+    </div>
+    <div class="slide-counter">3 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 4 — HABILIDAD 1: MONITOREO
+  ============================================================ -->
+  <section class="slide s4">
+    <div class="slide-eyebrow">Habilidad 1 — Activa</div>
+    <div class="slide-title">Detectar demandas nuevas <span class="hl-teal">antes que nadie</span></div>
+    <div class="slide-sub" style="margin-bottom:18px">Pipeline automatizado, extremo a extremo</div>
+    <div class="pipeline-row">
+      <div class="pipe-step">
+        <div class="pipe-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <div class="pipe-label">Portal<br>Rama Judicial</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        </div>
+        <div class="pipe-label">Descarga<br>PDFs</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <div class="pipe-label">Extracción<br>y clasificación</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="pipe-label">Búsqueda<br>contactos</div>
+      </div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step">
+        <div class="pipe-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </div>
+        <div class="pipe-label">Notificación<br>Telegram</div>
+      </div>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val">22</div>
+        <div class="metric-lbl">Despachos civiles<br>Medellín</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val">84</div>
+        <div class="metric-lbl">PDFs procesados<br>en validación</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val">481</div>
+        <div class="metric-lbl">Registros<br>relevantes</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val">90</div>
+        <div class="metric-lbl">Contactos<br>encontrados</div>
+      </div>
+    </div>
+    <div class="slide-counter">4 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 5 — DEMO TELEGRAM
+  ============================================================ -->
+  <section class="slide s5">
+    <div class="s5-left">
+      <div class="slide-eyebrow">Demo</div>
+      <div class="slide-title" style="font-size:22px;margin-bottom:6px">Así se ve en la práctica<br>— desde su celular</div>
+      <div class="tg-window" style="margin-top:14px">
+        <div class="tg-header">
+          <div class="tg-avatar">
+            <svg width="16" height="16" viewBox="0 0 80 80" fill="none">
+              <rect x="16" y="22" width="48" height="36" rx="9" fill="rgba(255,255,255,0.3)" stroke="white" stroke-width="1.5"/>
+              <rect x="27" y="34" width="9" height="9" rx="2.5" fill="white"/>
+              <rect x="44" y="34" width="9" height="9" rx="2.5" fill="white"/>
+              <rect x="34" y="48" width="12" height="3" rx="1.5" fill="rgba(255,255,255,0.6)"/>
+              <rect x="37" y="14" width="6" height="10" rx="2" fill="rgba(255,255,255,0.4)" stroke="white" stroke-width="1"/>
+              <circle cx="40" cy="12" r="3" fill="white"/>
+            </svg>
+          </div>
+          <div>
+            <div class="tg-name">LegalMonitor Bot</div>
+            <div class="tg-status">● En línea</div>
+          </div>
+        </div>
+        <div class="tg-body">
+          <div class="tg-msg-out"><span class="tg-cmd">/demandas</span> 2026-03-20</div>
+          <div class="tg-msg-in">
+            <div style="font-weight:700;color:#0ea5e9;margin-bottom:6px">📋 Reporte · 20 mar 2026</div>
+            <div class="tg-case">
+              <div class="tg-case-title">Juzgado 3 Civil Circuito · 11:42 am</div>
+              <div class="tg-case-detail">BANCO POPULAR S.A. vs HERNÁNDEZ OSPINA · Verbal menor cuantía</div>
+              <div style="margin-top:3px"><span class="badge-accepted">Aceptado</span> &nbsp;conf. 0.94 · Contacto encontrado</div>
+            </div>
+            <div class="tg-case" style="border-color:#f59e0b">
+              <div class="tg-case-title">Juzgado 7 Civil Circuito · 2:15 pm</div>
+              <div class="tg-case-detail">COLPATRIA vs RAMÍREZ VILLA · Proceso ejecutivo</div>
+              <div style="margin-top:3px"><span class="badge-review">Revisar</span> &nbsp;conf. 0.82 · Sin contacto</div>
+            </div>
+            <div style="margin-top:6px;font-size:10.5px;color:rgba(255,255,255,0.4)">+12 casos más · CSV adjunto ↓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="s5-right">
+      <div class="slide-eyebrow" style="margin-bottom:6px">Reporte generado</div>
+      <div class="report-card">
+        <div class="report-title">Run 2026-03-20</div>
+        <div class="report-row"><span class="lbl">Despachos</span><span class="val teal">22</span></div>
+        <div class="report-row"><span class="lbl">PDFs descargados</span><span class="val">14</span></div>
+        <div class="report-row"><span class="lbl">Registros totales</span><span class="val">180</span></div>
+        <div class="report-row"><span class="lbl">Aceptados</span><span class="val green">47</span></div>
+        <div class="report-row"><span class="lbl">Para revisar</span><span class="val gold">23</span></div>
+        <div class="report-row"><span class="lbl">Contactos</span><span class="val teal">31</span></div>
+        <div class="report-row"><span class="lbl">Duración</span><span class="val">4m 12s</span></div>
+      </div>
+      <div class="report-card" style="font-size:11px;color:rgba(255,255,255,0.5);line-height:1.6">
+        <div style="color:var(--teal);font-weight:700;margin-bottom:4px;font-size:11px">Salida exportada</div>
+        <div>📄 run_2026-03-20.json</div>
+        <div>📊 run_2026-03-20.csv</div>
+        <div style="margin-top:4px;color:rgba(255,255,255,0.35);font-size:10px">data/runs/2026-03-20/</div>
+      </div>
+    </div>
+    <div class="slide-counter">5 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 6 — HABILIDADES A SU MEDIDA
+  ============================================================ -->
+  <section class="slide s6">
+    <div class="s6-left">
+      <div class="slide-eyebrow">Plataforma extensible</div>
+      <div class="slide-title">Usted decide qué<br>automatizar — <span class="hl-teal">nosotros<br>lo construimos</span></div>
+      <div class="s6-desc">
+        La primera habilidad ya está activa y validada. Las siguientes se construyen a medida
+        según lo que su bufete necesite eliminar del trabajo manual.
+      </div>
+      <div class="s6-note">
+        <strong>Cada habilidad es un módulo independiente</strong> que se activa sin interrumpir
+        las habilidades existentes. Usted define las prioridades.
+      </div>
+    </div>
+    <div class="s6-right">
+      <div class="hub6-ring"></div>
+      <div class="hub6-center">
+        <svg width="34" height="34" viewBox="0 0 80 80" fill="none">
+          <rect x="16" y="24" width="48" height="36" rx="9" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+          <rect x="28" y="36" width="9" height="9" rx="2.5" fill="white"/>
+          <rect x="43" y="36" width="9" height="9" rx="2.5" fill="white"/>
+          <rect x="33" y="50" width="14" height="3" rx="1.5" fill="rgba(255,255,255,0.5)"/>
+          <rect x="36" y="16" width="8" height="10" rx="2" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.5)" stroke-width="1.2"/>
+          <circle cx="40" cy="14" r="3" fill="white"/>
+        </svg>
+        <div class="hub-label">Agente<br>IA</div>
+      </div>
+      <!-- Active node: top -->
+      <div class="s6-node active-node s6n1">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <div class="s6-node-lbl">Monitoreo demandas</div>
+        <span class="s6-badge">Activa</span>
+      </div>
+      <!-- Inactive nodes -->
+      <div class="s6-node inactive-node s6n2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <div class="s6-node-lbl">Alertas de términos</div>
+        <span class="s6-badge-idea">Ejemplo</span>
+      </div>
+      <div class="s6-node inactive-node s6n3">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <div class="s6-node-lbl">Borradores y resúmenes</div>
+        <span class="s6-badge-idea">Ejemplo</span>
+      </div>
+      <div class="s6-node inactive-node s6n4" style="text-align:center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+        <div class="s6-node-lbl">Su idea aquí</div>
+        <span class="s6-badge-idea">A medida</span>
+      </div>
+      <div class="s6-node inactive-node s6n5">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+        <div class="s6-node-lbl">Enriquecimiento leads</div>
+        <span class="s6-badge-idea">Ejemplo</span>
+      </div>
+    </div>
+    <div class="slide-counter">6 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 7 — PRECIOS
+  ============================================================ -->
+  <section class="slide s7">
+    <div class="slide-eyebrow">Pricing</div>
+    <div class="slide-title" style="color:#1e293b;font-size:24px;margin-bottom:4px">Empiece con lo esencial. <span style="color:#0284c7">Crezca a su ritmo.</span></div>
+    <div class="slide-sub" style="margin-bottom:20px">Sin contratos anuales. Sin costos ocultos.</div>
+    <div class="pricing-layout">
+      <div class="pricing-main">
+        <div class="pricing-main-tag">Plan base</div>
+        <div class="pricing-name">Agente LegalMonitor</div>
+        <div class="pricing-price">$300K</div>
+        <div class="pricing-period">COP / mes &nbsp;·&nbsp; ≈ $72 USD</div>
+        <div class="pricing-includes">
+          <div class="pricing-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Acceso al agente vía Telegram
+          </div>
+          <div class="pricing-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Habilidad: monitoreo de demandas
+          </div>
+          <div class="pricing-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            22 despachos civiles del circuito de Medellín
+          </div>
+          <div class="pricing-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Exportación CSV + JSON por corrida
+          </div>
+          <div class="pricing-item">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Soporte directo por WhatsApp
+          </div>
+        </div>
+      </div>
+      <div class="pricing-skills">
+        <div class="skills-header">+ Habilidades adicionales</div>
+        <div class="skill-price-row">
+          <div class="skill-price-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div class="skill-price-name">Alertas de términos</div>
+          <div class="skill-price-val">+$200K</div>
+        </div>
+        <div class="skill-price-row">
+          <div class="skill-price-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div class="skill-price-name">Borradores / resúmenes</div>
+          <div class="skill-price-val">+$300K</div>
+        </div>
+        <div class="skill-price-row">
+          <div class="skill-price-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+          <div class="skill-price-name">Enriquecimiento leads</div>
+          <div class="skill-price-val">+$200K</div>
+        </div>
+        <div class="skill-price-row" style="border-style:dashed;background:rgba(245,158,11,0.04);border-color:rgba(245,158,11,0.25)">
+          <div class="skill-price-icon" style="background:rgba(245,158,11,0.1);border-color:rgba(245,158,11,0.2)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg>
+          </div>
+          <div class="skill-price-name" style="color:#78716c">Habilidad personalizada</div>
+          <div class="skill-price-val" style="color:#b45309">+$200K–$400K</div>
+        </div>
+        <div class="pricing-example">
+          Ejemplo: Base + 2 habilidades = <strong>$700K/mes</strong>
+        </div>
+        <div class="pricing-free">
+          🎁 Primer mes sin costo a cambio de feedback
+        </div>
+      </div>
+    </div>
+    <div class="slide-counter">7 / 8</div>
+  </section>
+
+  <!-- ============================================================
+       SLIDE 8 — CIERRE
+  ============================================================ -->
+  <section class="slide s8">
+    <div class="s8-headline">
+      Empiece con un agente.<br>Termine con un <span class="hl">equipo de IA</span>.
+    </div>
+    <div class="s8-sub">
+      LegalMonitor está activo y validado. Solo necesitamos 48 horas para conectarlo a su bufete.
+    </div>
+    <div class="s8-badges">
+      <div class="s8-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Primer mes sin costo
+      </div>
+      <div class="s8-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Activo en 48 horas
+      </div>
+      <div class="s8-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Solo desde Telegram
+      </div>
+    </div>
+    <div class="cta-btn">
+      Solicitar acceso al agente
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </div>
+    <div class="slide-counter">8 / 8</div>
+  </section>
+
+</body>
+</html>
