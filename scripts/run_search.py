@@ -128,7 +128,6 @@ def run_pipeline(
     draft_dry_run: bool = False,
     sheets_report: bool = False,
     sheets_dry_run: bool = False,
-    no_db: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -301,28 +300,6 @@ def run_pipeline(
             dry_run=draft_dry_run,
         )
 
-    # Blacklist — último filtro antes de drafts
-    _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
-    bf = BlacklistFilter.from_yaml(_blacklist_path)
-    records = bf.apply(records)
-    blacklisted_count = sum(1 for r in records if r.get("blacklisted"))
-    if blacklisted_count:
-        logger.info("Blacklist: %d registros marcados como excluidos", blacklisted_count)
-
-    if draft_emails:
-        from pathlib import Path as _Path
-        _template = PROJECT_ROOT / "config" / "email_template.html.jinja2"
-        _draft_log = output_root / "draft_log.jsonl"
-        records = create_drafts(
-            records=records,
-            template_path=_template,
-            gog_account=gog_account,
-            draft_log_path=_draft_log,
-            filter_mode=draft_filter,
-            firma_vars=firma_vars or {},
-            dry_run=draft_dry_run,
-        )
-
     metadata = {
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
@@ -398,8 +375,6 @@ def cli() -> None:
 
     # Aplicar defaults de pipeline.yaml para valores no pasados por CLI
     d = _DEFAULTS
-    enrich_2023 = args.enrich_file_2023 or str(PROJECT_ROOT / d.get("enrich_file_2023", ""))
-    enrich_2025 = args.enrich_file_2025 or str(PROJECT_ROOT / d.get("enrich_file_2025", ""))
     draft_emails = args.draft_emails or bool(d.get("draft_emails", False))
     gog_account = args.gog_account or d.get("gog_account")
     draft_filter = args.draft_filter if args.draft_filter != "all_with_email" else d.get("draft_filter", "all_with_email")
