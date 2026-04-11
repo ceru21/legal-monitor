@@ -128,6 +128,7 @@ def run_pipeline(
     draft_dry_run: bool = False,
     sheets_report: bool = False,
     sheets_dry_run: bool = False,
+    no_db: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()

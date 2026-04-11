@@ -29,8 +29,16 @@
       "Bash(export LC_ALL=en_US.UTF-8)",
       "Bash(export LANG=en_US.UTF-8)",
       "Bash(pip3 install:*)",
-      "Bash(RUN_DIR=\"data/runs/medellin_civil_circuito_2026-03-20_a_2026-03-23_20260323T235844Z\" cd /Users/cesarriosusuga/ia-company/legal-monitor __NEW_LINE_384e8359acb748a6__ echo \"=== summary.json ===\" python3 -c \"import json; d=json.load\\(open\\(''''$RUN_DIR/exports/summary.json''''\\)\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\" __NEW_LINE_384e8359acb748a6__ echo \"\" echo \"=== diagnostics ===\" python3 -c \"import json; d=json.load\\(open\\(''''$RUN_DIR/diagnostics/pipeline_diagnostics.json''''\\)\\); print\\(json.dumps\\(d, indent=2, ensure_ascii=False\\)\\)\")",
-      "Bash(RUN_DIR=\"data/runs/medellin_civil_circuito_2026-03-20_a_2026-03-23_20260323T235844Z\")"
+      "Bash(pip install:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(python:*)",
+      "Bash(iconv -f latin-1 -t utf-8)",
+      "Bash(pip freeze:*)",
+      "Bash(DATABASE_URL=postgresql://legal_monitor:legal_monitor@localhost:5432/legal_monitor python -c \"from db import get_session; print\\('get_session OK'\\)\" 2>&1)",
+      "Bash(DATABASE_URL=postgresql://legal_monitor:legal_monitor@localhost:5432/legal_monitor TEST_DATABASE_URL=postgresql://legal_monitor:legal_monitor@localhost:5432/legal_monitor_test python -m pytest --tb=short -q 2>&1)",
+      "Bash(DATABASE_URL=postgresql://legal_monitor:legal_monitor@localhost:5432/legal_monitor python scripts/run_search.py --fecha-inicio invalid --fecha-fin 2024-01-01)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }
