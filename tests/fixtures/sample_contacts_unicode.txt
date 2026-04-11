@@ -1,0 +1,3 @@
+razon_social,correo_comercial,ciudad,nit
+COMPANIA AEREA S.A.S.,info@aerea.com,Bogota,123456-7
+INDUSTRIAS QUIMICAS LTDA,quimica@ind.co,Medellin,234567-8

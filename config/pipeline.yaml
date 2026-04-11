@@ -21,10 +21,11 @@ output:
   export_csv: true
   export_json: true
 
+database:
+  source_label: colombia_2026
+
 # Defaults para ejecución completa — se usan cuando no se pasan por CLI
 defaults:
-  enrich_file_2023: input/ANTIOQUIA_2023.TXT
-  enrich_file_2025: input/ANTIOQUIA_2025.TXT
   draft_emails: true
   gog_account: mdetech01@gmail.com
   draft_filter: all_with_email
@@ -32,3 +33,6 @@ defaults:
   abogado_nombre: "[NOMBRE DEL ABOGADO]"
   abogado_email: mdetech01@gmail.com
   sheets_report: true
+
+database:
+  source_label: colombia_2026
