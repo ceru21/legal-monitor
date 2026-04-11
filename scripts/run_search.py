@@ -301,6 +301,28 @@ def run_pipeline(
             dry_run=draft_dry_run,
         )
 
+    # Blacklist — último filtro antes de drafts
+    _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
+    bf = BlacklistFilter.from_yaml(_blacklist_path)
+    records = bf.apply(records)
+    blacklisted_count = sum(1 for r in records if r.get("blacklisted"))
+    if blacklisted_count:
+        logger.info("Blacklist: %d registros marcados como excluidos", blacklisted_count)
+
+    if draft_emails:
+        from pathlib import Path as _Path
+        _template = PROJECT_ROOT / "config" / "email_template.html.jinja2"
+        _draft_log = output_root / "draft_log.jsonl"
+        records = create_drafts(
+            records=records,
+            template_path=_template,
+            gog_account=gog_account,
+            draft_log_path=_draft_log,
+            filter_mode=draft_filter,
+            firma_vars=firma_vars or {},
+            dry_run=draft_dry_run,
+        )
+
     metadata = {
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
