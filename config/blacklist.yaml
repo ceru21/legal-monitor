@@ -1,0 +1,31 @@
+# blacklist.yaml — Empresas excluidas del outreach
+#
+# Matching exacto: el demandado normalizado debe ser igual a la entrada.
+# Normalización aplica: minúsculas, sin tildes, sin caracteres especiales,
+# sin sufijos corporativos (s.a.s, ltda, s.a, etc.).
+#
+# Ejemplos:
+#   "bancolombia" excluye: BANCOLOMBIA S.A., Bancolombia S.A.S., BANCOLOMBIA
+#   "davivienda" excluye: Davivienda S.A., DAVIVIENDA
+#
+# Agregar una empresa por línea bajo 'empresas:'.
+
+empresas:
+  - bancolombia
+  - davivienda
+  - bbva
+  - colpatria
+  - scotiabank colpatria
+  - banco de bogota
+  - banco popular
+  - banco agrario
+  - banco caja social
+  - nequi
+  - suramericana
+  - seguros suramericana
+  - seguros de vida suramericana
+  - seguros generales suramericana
+  - sura
+  - eps sanitas
+  - nueva eps
+  - sanitas eps

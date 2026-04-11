@@ -9,18 +9,41 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+PROJECT_ROOT = SCRIPT_DIR.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from blacklist import BlacklistFilter
 from draft_emails import create_drafts
-from enrich_contacts import enrich_records
+from enrich_contacts import enrich_records_from_db
+from sheets_report import export_to_sheets
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
 from parse_pdf import parse_pdf
 from scraper_portal import DetailDocument, PortalClient, Publication
 from utils import normalize_text, write_json
+from validators import sanitize_exception, validate_date, validate_despacho_id
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("legal_monitor.run_search")
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+def _load_pipeline_defaults() -> dict[str, Any]:
+    """Carga los defaults del pipeline desde pipeline.yaml."""
+    try:
+        import yaml
+        cfg_path = PROJECT_ROOT / "config" / "pipeline.yaml"
+        if cfg_path.exists():
+            data = yaml.safe_load(cfg_path.read_text(encoding="utf-8")) or {}
+            return data.get("defaults", {})
+    except Exception:
+        pass
+    return {}
+
+
+_DEFAULTS = _load_pipeline_defaults()
 REFERENCE_DESPACHOS = PROJECT_ROOT / "references" / "despachos_medellin_civil_circuito.json"
 DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "runs"
 
@@ -97,13 +120,14 @@ def run_pipeline(
     fecha_fin: str,
     despacho_ids: list[str] | None,
     output_root: Path,
-    enrich_file_2023: str | None = None,
-    enrich_file_2025: str | None = None,
+    no_db: bool = False,
     draft_emails: bool = False,
     gog_account: str | None = None,
     draft_filter: str = "all_with_email",
     firma_vars: dict[str, str] | None = None,
     draft_dry_run: bool = False,
+    sheets_report: bool = False,
+    sheets_dry_run: bool = False,
 ) -> dict[str, Any]:
     client = PortalClient()
     scope = load_scope_despachos()
@@ -227,8 +251,40 @@ def run_pipeline(
 
     logger.info("Corrida completada — %d publicaciones, %d PDFs, %d filas", publications_total, pdfs_total, len(records))
 
-    if enrich_file_2023 and enrich_file_2025:
-        records = enrich_records(records, enrich_file_2023, enrich_file_2025)
+    enrichment_enabled = False
+    if not no_db:
+        try:
+            from db import get_session
+            from db.repository import save_run
+            with get_session() as session:
+                records = enrich_records_from_db(records, session)
+                enrichment_enabled = True
+                metadata_for_save = {
+                    "fecha_inicio": fecha_inicio,
+                    "fecha_fin": fecha_fin,
+                    "despachos_total": len(selected),
+                    "publications_total": publications_total,
+                    "pdfs_total": pdfs_total,
+                    "enrichment_enabled": True,
+                }
+                save_run(
+                    run_label=run_label,
+                    fecha_inicio=fecha_inicio,
+                    fecha_fin=fecha_fin,
+                    metadata=metadata_for_save,
+                    records=records,
+                    session=session,
+                )
+        except Exception as exc:
+            logger.warning("DB enrichment/persistence failed: %s. Continuing without DB.", sanitize_exception(exc))
+
+    # Blacklist — último filtro antes de drafts
+    _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
+    bf = BlacklistFilter.from_yaml(_blacklist_path)
+    records = bf.apply(records)
+    blacklisted_count = sum(1 for r in records if r.get("blacklisted"))
+    if blacklisted_count:
+        logger.info("Blacklist: %d registros marcados como excluidos", blacklisted_count)
 
     if draft_emails:
         from pathlib import Path as _Path
@@ -250,8 +306,9 @@ def run_pipeline(
         "despachos_total": len(selected),
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
-        "enrichment_enabled": bool(enrich_file_2023 and enrich_file_2025),
+        "enrichment_enabled": enrichment_enabled,
         "draft_emails_enabled": draft_emails,
+        "sheets_report_enabled": sheets_report,
     }
     export_payload = build_export_payload(run_label=run_label, metadata=metadata, records=records)
     outputs = write_export_bundle(export_dir, export_payload)
@@ -260,12 +317,28 @@ def run_pipeline(
     write_json(diagnostics_dir / "selected_documents.json", selected_docs_manifest)
     write_json(diagnostics_dir / "pipeline_diagnostics.json", diagnostics)
 
+    sheets_result: dict[str, Any] = {}
+    if sheets_report and gog_account:
+        logger.info("Exportando a Google Sheets...")
+        try:
+            sheets_result = export_to_sheets(
+                run_label=run_label,
+                records=records,
+                account=gog_account,
+                dry_run=sheets_dry_run,
+            )
+            logger.info("Sheets: %s", sheets_result.get("sheet_url", "dry-run"))
+        except Exception as exc:
+            logger.error("Sheets export fallido: %s", exc)
+            sheets_result = {"error": str(exc)}
+
     result = {
         "run_label": run_label,
         "run_dir": str(run_dir),
         "metadata": metadata,
         "exports": outputs,
         "diagnostics": str(diagnostics_dir / "pipeline_diagnostics.json"),
+        "sheets": sheets_result or None,
     }
     write_json(run_dir / "run_result.json", result)
     return result
@@ -274,9 +347,7 @@ def run_pipeline(
 def cli() -> None:
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s — %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S",
-        stream=sys.stderr,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
     parser = argparse.ArgumentParser(description="Flujo end-to-end para Medellín civil circuito")
@@ -284,8 +355,7 @@ def cli() -> None:
     parser.add_argument("--fecha-fin", required=True, type=valid_date)
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
-    parser.add_argument("--enrich-file-2023")
-    parser.add_argument("--enrich-file-2025")
+    parser.add_argument("--no-db", action="store_true", help="Saltar enriquecimiento y persistencia en PostgreSQL")
     parser.add_argument("--draft-emails", action="store_true", help="Crear borradores Gmail para registros con email")
     parser.add_argument("--gog-account", help="Cuenta Gmail autenticada en gog")
     parser.add_argument(
@@ -299,27 +369,46 @@ def cli() -> None:
     parser.add_argument("--abogado-telefono", default="")
     parser.add_argument("--abogado-email", default="")
     parser.add_argument("--draft-dry-run", action="store_true", help="Simula drafts sin crearlos en Gmail")
+    parser.add_argument("--sheets-report", action="store_true", help="Exportar resultados a Google Sheets")
+    parser.add_argument("--sheets-dry-run", action="store_true", help="Simula export a Sheets sin escribir nada")
     args = parser.parse_args()
 
+    # Aplicar defaults de pipeline.yaml para valores no pasados por CLI
+    d = _DEFAULTS
+    draft_emails = args.draft_emails or bool(d.get("draft_emails", False))
+    gog_account = args.gog_account or d.get("gog_account")
+    draft_filter = args.draft_filter if args.draft_filter != "all_with_email" else d.get("draft_filter", "all_with_email")
+    sheets_report = args.sheets_report or bool(d.get("sheets_report", False))
+
     firma_vars = {
-        "firma_nombre": args.firma_nombre,
-        "abogado_nombre": args.abogado_nombre,
-        "abogado_telefono": args.abogado_telefono,
-        "abogado_email": args.abogado_email,
+        "firma_nombre": args.firma_nombre if args.firma_nombre != "[NOMBRE BUFETE]" else d.get("firma_nombre", "[NOMBRE BUFETE]"),
+        "abogado_nombre": args.abogado_nombre if args.abogado_nombre != "[NOMBRE DEL ABOGADO]" else d.get("abogado_nombre", "[NOMBRE DEL ABOGADO]"),
+        "abogado_telefono": args.abogado_telefono or d.get("abogado_telefono", ""),
+        "abogado_email": args.abogado_email or d.get("abogado_email", ""),
     }
+
+    try:
+        validate_date(args.fecha_inicio)
+        validate_date(args.fecha_fin)
+        if args.despacho_id:
+            for did in args.despacho_id:
+                validate_despacho_id(did)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     result = run_pipeline(
         fecha_inicio=args.fecha_inicio,
         fecha_fin=args.fecha_fin,
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
-        enrich_file_2023=args.enrich_file_2023,
-        enrich_file_2025=args.enrich_file_2025,
-        draft_emails=args.draft_emails,
-        gog_account=args.gog_account,
-        draft_filter=args.draft_filter,
+        no_db=args.no_db,
+        draft_emails=draft_emails,
+        gog_account=gog_account,
+        draft_filter=draft_filter,
         firma_vars=firma_vars,
         draft_dry_run=args.draft_dry_run,
+        sheets_report=sheets_report,
+        sheets_dry_run=args.sheets_dry_run,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

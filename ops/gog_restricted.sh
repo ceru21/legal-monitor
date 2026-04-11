@@ -12,11 +12,35 @@ set -euo pipefail
 GOG_BIN="${GOG_BIN:-gog}"
 GOG_KEYRING_PASSWORD="${GOG_KEYRING_PASSWORD:-}"
 
-# Solo permite el subcomando: gmail drafts create
-if [[ "${1:-}" != "gmail" ]] || [[ "${2:-}" != "drafts" ]] || [[ "${3:-}" != "create" ]]; then
-  echo "ERROR: comando no permitido. Este wrapper solo permite: gmail drafts create" >&2
+# Comandos permitidos explícitamente:
+#   gmail drafts create         — Módulo 5: borradores
+#   sheets create               — Módulo 7: crear spreadsheet
+#   sheets add-tab              — Módulo 7: nueva pestaña
+#   sheets append               — Módulo 7: escribir datos
+#   sheets freeze               — Módulo 7: formatear headers
+#   sheets metadata             — Módulo 7: verificar existencia
+#   drive ls                    — Módulo 7: buscar carpeta/sheet
+#   drive mkdir                 — Módulo 7: crear carpeta
+
+ALLOWED=false
+
+if [[ "${1:-}" == "gmail" ]] && [[ "${2:-}" == "drafts" ]] && [[ "${3:-}" == "create" ]]; then
+  ALLOWED=true
+fi
+
+if [[ "${1:-}" == "sheets" ]] && [[ "${2:-}" =~ ^(create|add-tab|append|freeze|metadata|update)$ ]]; then
+  ALLOWED=true
+fi
+
+if [[ "${1:-}" == "drive" ]] && [[ "${2:-}" =~ ^(ls|mkdir)$ ]]; then
+  ALLOWED=true
+fi
+
+if [[ "$ALLOWED" != "true" ]]; then
+  echo "ERROR: comando no permitido: $*" >&2
+  echo "Comandos permitidos: gmail drafts create | sheets create/add-tab/append/freeze/metadata/update | drive ls/mkdir" >&2
   exit 1
 fi
 
 export GOG_KEYRING_PASSWORD
-exec "$GOG_BIN" --enable-commands="gmail" "$@"
+exec "$GOG_BIN" --enable-commands="gmail,sheets,drive" "$@"

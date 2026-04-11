@@ -3,10 +3,13 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import logging
 import re
 from pathlib import Path
 import sys
 from typing import Any
+
+logger = logging.getLogger("legal_monitor.enrich_contacts")
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -63,6 +66,44 @@ def load_contact_index(path: str | Path) -> dict[str, dict[str, Any]]:
     return index
 
 
+# ---------------------------------------------------------------------------
+# DB-based enrichment (primary path)
+# ---------------------------------------------------------------------------
+
+def enrich_record_from_db(record: dict[str, Any], session: Any) -> dict[str, Any]:
+    """Enrich a single record using the PostgreSQL contacts table."""
+    _root = Path(__file__).resolve().parent.parent
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+    from db.repository import query_contacts_by_name
+
+    demandado = record.get("demandado")
+    key = normalize_company_name(demandado)
+    raw_emails = query_contacts_by_name(key, session)
+
+    all_emails: list[str] = []
+    for raw in raw_emails:
+        for email in split_emails(raw):
+            if email not in all_emails:
+                all_emails.append(email)
+
+    return {
+        **record,
+        "match_camara": bool(all_emails),
+        "emails_encontrados": all_emails,
+        "demandado_normalizado_match": key,
+    }
+
+
+def enrich_records_from_db(records: list[dict[str, Any]], session: Any) -> list[dict[str, Any]]:
+    """Enrich all records from PostgreSQL (no file loading)."""
+    return [enrich_record_from_db(record, session) for record in records]
+
+
+# ---------------------------------------------------------------------------
+# Legacy file-based helpers (kept for backwards-compat)
+# ---------------------------------------------------------------------------
+
 def enrich_record(record: dict[str, Any], idx2023: dict[str, Any], idx2025: dict[str, Any]) -> dict[str, Any]:
     demandado = record.get("demandado")
     key = normalize_company_name(demandado)
@@ -74,8 +115,11 @@ def enrich_record(record: dict[str, Any], idx2023: dict[str, Any], idx2025: dict
     for email in emails_2023 + emails_2025:
         if email not in all_emails:
             all_emails.append(email)
+    # found_cc = True si la empresa aparece en el directorio CC aunque no tenga email
+    found_cc = bool(m2023 or m2025)
     return {
         **record,
+        "found_cc": found_cc,
         "match_2023": bool(emails_2023),
         "email_2023": ", ".join(emails_2023) if emails_2023 else None,
         "match_2025": bool(emails_2025),
@@ -93,24 +137,37 @@ def enrich_records(records: list[dict[str, Any]], file_2023: str | Path, file_20
 
 
 def cli() -> None:
-    parser = argparse.ArgumentParser(description="Enriquece registros operativos con correos de archivos 2023/2025")
+    parser = argparse.ArgumentParser(description="Enriquece registros operativos con correos desde PostgreSQL")
     parser.add_argument("records_json", help="Archivo JSON de registros operativos")
-    parser.add_argument("--file-2023", required=True)
-    parser.add_argument("--file-2025", required=True)
     parser.add_argument("--out-json", required=True)
     parser.add_argument("--out-csv")
     args = parser.parse_args()
 
-    records = json.loads(Path(args.records_json).read_text(encoding="utf-8"))
-    enriched = enrich_records(records, args.file_2023, args.file_2025)
+    _root = Path(__file__).resolve().parent.parent
+    if str(_root) not in sys.path:
+        sys.path.insert(0, str(_root))
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
+    try:
+        records = json.loads(Path(args.records_json).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        logger.error("Failed to read input file '%s': %s", args.records_json, exc)
+        sys.exit(1)
+
+    from db import get_session
+    with get_session() as session:
+        enriched = enrich_records_from_db(records, session)
+
     write_json(args.out_json, enriched)
     if args.out_csv:
         write_csv(args.out_csv, enriched)
     print(json.dumps({
         "records": len(enriched),
-        "match_total": sum(1 for row in enriched if row.get("match_total")),
-        "match_2023": sum(1 for row in enriched if row.get("match_2023")),
-        "match_2025": sum(1 for row in enriched if row.get("match_2025")),
+        "match_camara": sum(1 for row in enriched if row.get("match_camara")),
         "out_json": args.out_json,
         "out_csv": args.out_csv,
     }, ensure_ascii=False, indent=2))

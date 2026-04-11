@@ -63,14 +63,13 @@ OPERATIVE_COLUMNS = [
     "revision_manual",
     "process_type_match",
     "actuacion_match",
-    "match_2023",
-    "email_2023",
-    "match_2025",
-    "email_2025",
-    "match_total",
+    "match_camara",
+    "emails_encontrados",
     "draft_id",
     "draft_status",
     "draft_email_to",
+    "blacklisted",
+    "blacklist_match",
 ]
 
 PDF_SUMMARY_COLUMNS = [
