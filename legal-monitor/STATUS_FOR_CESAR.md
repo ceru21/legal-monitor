@@ -34,23 +34,20 @@ Validar de extremo a extremo que el sistema puede:
 - Se entró al detalle y se detectó como principal: `Planilla Estados Nro. 041.pdf`
 - El PDF ya fue descargado como muestra real
 
-## Bloqueo actual
-El entorno no tiene disponibles las dependencias Python esperadas para parsing de PDF:
-- no hay `python -m pip`
-- no se pudo crear `venv` por falta de `ensurepip`
-- no está disponible `pdfplumber`
+## Estado técnico actual
+Se validó un entorno Python local dentro de `legal-monitor/.venv` con `pdfplumber` disponible para el parser inicial.
 
-## Mitigación en curso
-Se abrió una vía alternativa con Node local:
-- se inicializó `npm` dentro de `legal-monitor`
-- se instaló una librería local para parsing de PDF
-- se está adaptando la extracción para continuar sin frenar el sprint
+## Evidencia de validación
+- `scripts/parse_pdf.py` ejecutó correctamente sobre `data/raw/pdfs/sample_041.pdf`
+- Se generó salida parseada con 16 filas
+- `scripts/matcher.py` ejecutó correctamente sobre la salida parseada
+- Resultado de matching sobre muestra: 5 `accepted`, 1 `review`, 10 `rejected`
 
 ## Siguiente paso inmediato
-1. terminar extracción del contenido del PDF principal
-2. convertirlo en filas iniciales parseables
-3. validar si la estructura conserva columnas útiles
-4. luego continuar con matcher y exportación
+1. integrar scraper + descarga + parser + matcher en un flujo único
+2. implementar exportación consolidada JSON/CSV
+3. ampliar el corpus de prueba con más PDFs reales
+4. refinar reglas de matching y ground truth
 
 ## Archivos relevantes
 - `legal-monitor/SPRINT_1.md`
@@ -62,5 +59,8 @@ Se abrió una vía alternativa con Node local:
 
 ## Commits recientes
 - `072418d` — Add legal monitor sprint 1 plan and initial config
+- `777a8a5` — Document portal discovery and Medellin civil court list
+- `f6df8a3` — Implement initial portal scraper and shared models
+72418d` — Add legal monitor sprint 1 plan and initial config
 - `777a8a5` — Document portal discovery and Medellin civil court list
 - `f6df8a3` — Implement initial portal scraper and shared models

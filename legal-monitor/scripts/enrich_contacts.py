@@ -74,8 +74,11 @@ def enrich_record(record: dict[str, Any], idx2023: dict[str, Any], idx2025: dict
     for email in emails_2023 + emails_2025:
         if email not in all_emails:
             all_emails.append(email)
+    # found_cc = True si la empresa aparece en el directorio CC aunque no tenga email
+    found_cc = bool(m2023 or m2025)
     return {
         **record,
+        "found_cc": found_cc,
         "match_2023": bool(emails_2023),
         "email_2023": ", ".join(emails_2023) if emails_2023 else None,
         "match_2025": bool(emails_2025),

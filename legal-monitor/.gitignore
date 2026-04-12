@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Generated data / local artifacts
+data/
+*.pdf
+
+# OS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.*
+
+# Local tooling
+.tools/

@@ -2,25 +2,61 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 from difflib import SequenceMatcher
 from pathlib import Path
-import sys
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
 from models import MatchDecision
 from utils import normalize_text, write_json
 
-PROCESS_TERMS = {
-    "verbal": ["verbal", "verbal sumario"],
-}
+logger = logging.getLogger(__name__)
 
-ACTUACION_TERMS = {
-    "admite_demanda": ["auto admite", "auto admite demanda", "admite demanda"],
-    "mandamiento": ["auto libra mandamiento", "libra mandamiento", "libra mandamiento de pago", "mandamiento de pago"],
-}
+_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+
+
+def _load_config() -> tuple[dict, dict, float, float]:
+    default_process: dict = {"verbal": ["verbal", "verbal sumario"]}
+    default_actuacion: dict = {
+        "admite_demanda": ["auto admite", "auto admite demanda", "admite demanda"],
+        "mandamiento": ["auto libra mandamiento", "libra mandamiento", "libra mandamiento de pago", "mandamiento de pago"],
+    }
+    default_accept = 0.90
+    default_review = 0.80
+
+    try:
+        import yaml
+    except ImportError:
+        return default_process, default_actuacion, default_accept, default_review
+
+    try:
+        process_terms = default_process
+        actuacion_terms = default_actuacion
+
+        patterns_path = _CONFIG_DIR / "target_patterns.yaml"
+        if patterns_path.exists():
+            data = yaml.safe_load(patterns_path.read_text(encoding="utf-8"))
+            if data.get("process_type_patterns"):
+                process_terms = {p["id"]: p["terms"] for p in data["process_type_patterns"]}
+            if data.get("actuacion_patterns"):
+                actuacion_terms = {p["id"]: p["terms"] for p in data["actuacion_patterns"]}
+
+        accept_threshold = default_accept
+        review_threshold = default_review
+        pipeline_path = _CONFIG_DIR / "pipeline.yaml"
+        if pipeline_path.exists():
+            cfg = yaml.safe_load(pipeline_path.read_text(encoding="utf-8"))
+            matching = cfg.get("matching", {})
+            accept_threshold = float(matching.get("fuzzy_threshold_accept", default_accept))
+            review_threshold = float(matching.get("fuzzy_threshold_review", default_review))
+
+        return process_terms, actuacion_terms, accept_threshold, review_threshold
+
+    except Exception as exc:
+        logger.warning("Failed to load YAML config: %s — using defaults", exc)
+        return default_process, default_actuacion, default_accept, default_review
+
+
+PROCESS_TERMS, ACTUACION_TERMS, THRESHOLD_ACCEPT, THRESHOLD_REVIEW = _load_config()
 
 NEGATIVE_HINTS = [
     "inadmite demanda",
@@ -80,16 +116,16 @@ def decide(row: dict) -> MatchDecision:
             act_match = key
             act_conf = score
 
-    if revision_manual and (process_conf >= 0.95 or act_conf >= 0.95):
+    if revision_manual and (process_conf >= THRESHOLD_ACCEPT or act_conf >= THRESHOLD_ACCEPT):
         decision = "review"
         reason = "manual_review_required"
-    elif process_conf >= 0.95 and act_conf >= 0.95:
+    elif process_conf >= THRESHOLD_ACCEPT and act_conf >= THRESHOLD_ACCEPT:
         decision = "accepted"
         reason = "strong_process_and_actuacion"
-    elif process_conf >= 0.95 or act_conf >= 0.95:
+    elif process_conf >= THRESHOLD_ACCEPT or act_conf >= THRESHOLD_ACCEPT:
         decision = "accepted"
         reason = "strong_single_signal"
-    elif process_conf >= 0.8 or act_conf >= 0.8:
+    elif process_conf >= THRESHOLD_REVIEW or act_conf >= THRESHOLD_REVIEW:
         decision = "review"
         reason = "medium_signal"
     else:
