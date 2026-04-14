@@ -4,12 +4,7 @@ import argparse
 import json
 from collections import Counter
 from pathlib import Path
-import sys
 from typing import Any, Iterable
-
-SCRIPT_DIR = Path(__file__).resolve().parent
-if str(SCRIPT_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPT_DIR))
 
 from utils import write_csv, write_json
 
@@ -73,6 +68,11 @@ OPERATIVE_COLUMNS = [
     "match_2025",
     "email_2025",
     "match_total",
+    "draft_id",
+    "draft_status",
+    "draft_email_to",
+    "blacklisted",
+    "blacklist_match",
 ]
 
 PDF_SUMMARY_COLUMNS = [

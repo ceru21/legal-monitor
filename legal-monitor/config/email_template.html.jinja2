@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background-color:#f4f4f4;font-family:Arial,Helvetica,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f4f4f4;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" style="background-color:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- HEADER -->
+          <tr>
+            <td style="background-color:#1a3a5c;padding:28px 36px;">
+              <p style="margin:0;font-size:20px;font-weight:bold;color:#ffffff;letter-spacing:0.5px;">
+                {{ firma_nombre | default("[NOMBRE BUFETE]") }}
+              </p>
+              <p style="margin:4px 0 0;font-size:12px;color:#a8c4e0;letter-spacing:0.3px;">
+                Consultoría Jurídica Especializada
+              </p>
+            </td>
+          </tr>
+
+          <!-- BODY -->
+          <tr>
+            <td style="padding:32px 36px 24px;">
+
+              <p style="margin:0 0 16px;font-size:14px;color:#333333;line-height:1.6;">
+                Estimado(a) representante de <strong style="color:#1a3a5c;">{{ demandado | default("su empresa") | replace("\n", " ") }}</strong>,
+              </p>
+
+              <p style="margin:0 0 16px;font-size:14px;color:#333333;line-height:1.6;">
+                Por medio de la presente, nos permitimos dirigirnos a usted en relación con el proceso
+                judicial identificado a continuación:
+              </p>
+
+              <!-- INFO BOX -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f0f4f8;border-left:4px solid #1a3a5c;border-radius:0 4px 4px 0;margin:0 0 20px;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-size:12px;color:#666666;padding-bottom:6px;width:130px;vertical-align:top;">Radicado</td>
+                        <td style="font-size:13px;color:#1a3a5c;font-weight:bold;padding-bottom:6px;vertical-align:top;">{{ radicado | default("N/D") }}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#666666;padding-bottom:6px;vertical-align:top;">Tipo de proceso</td>
+                        <td style="font-size:13px;color:#333333;padding-bottom:6px;vertical-align:top;">{{ tipo_proceso | default("Proceso civil") }}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#666666;padding-bottom:6px;vertical-align:top;">Despacho</td>
+                        <td style="font-size:13px;color:#333333;padding-bottom:6px;vertical-align:top;">{{ despacho | default("") }}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#666666;vertical-align:top;">Fecha publicación</td>
+                        <td style="font-size:13px;color:#333333;vertical-align:top;">{{ fecha_publicacion | default("") }}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 12px;font-size:14px;color:#333333;line-height:1.6;">
+                En <strong style="color:#1a3a5c;">{{ firma_nombre | default("[NOMBRE BUFETE]") }}</strong>,
+                contamos con un equipo especializado en derecho civil y comercial con amplia experiencia
+                en procesos de esta naturaleza. Le ofrecemos:
+              </p>
+
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+                {% for item in [
+                  "Asesoría y representación en todas las etapas del proceso",
+                  "Análisis de alternativas de negociación y acuerdo",
+                  "Gestión de documentación y presentación de recursos",
+                  "Seguimiento continuo a las publicaciones del despacho"
+                ] %}
+                <tr>
+                  <td style="padding:4px 0;font-size:14px;color:#333333;line-height:1.5;">
+                    <span style="color:#1a3a5c;font-weight:bold;margin-right:8px;">&#10003;</span>{{ item }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </table>
+
+              <p style="margin:0 0 24px;font-size:14px;color:#333333;line-height:1.6;">
+                Si desea conocer más sobre cómo podemos apoyarle, con gusto agendamos una reunión
+                <strong>sin costo ni compromiso</strong>.
+              </p>
+
+              <!-- CTA -->
+              <table cellpadding="0" cellspacing="0" border="0" style="margin:0 0 28px;">
+                <tr>
+                  <td style="background-color:#1a3a5c;border-radius:4px;padding:12px 28px;">
+                    <span style="font-size:14px;color:#ffffff;font-weight:bold;">Contáctenos hoy</span>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:14px;color:#333333;line-height:1.6;">
+                Atentamente,
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- FOOTER / FIRMA -->
+          <tr>
+            <td style="background-color:#f8f9fa;border-top:1px solid #e8e8e8;padding:20px 36px;">
+              <p style="margin:0;font-size:14px;font-weight:bold;color:#1a3a5c;">
+                {{ abogado_nombre | default("[NOMBRE DEL ABOGADO]") }}
+              </p>
+              <p style="margin:2px 0 0;font-size:12px;color:#555555;">
+                {{ firma_nombre | default("[NOMBRE BUFETE]") }}
+              </p>
+              {% if abogado_telefono is defined and abogado_telefono %}
+              <p style="margin:4px 0 0;font-size:12px;color:#555555;">
+                &#128222; {{ abogado_telefono }}
+              </p>
+              {% endif %}
+              {% if abogado_email is defined and abogado_email %}
+              <p style="margin:2px 0 0;font-size:12px;color:#555555;">
+                &#9993; {{ abogado_email }}
+              </p>
+              {% endif %}
+            </td>
+          </tr>
+
+          <!-- DISCLAIMER -->
+          <tr>
+            <td style="padding:12px 36px;background-color:#f4f4f4;">
+              <p style="margin:0;font-size:10px;color:#999999;line-height:1.4;text-align:center;">
+                Este mensaje es de carácter informativo y no constituye asesoría jurídica formal.
+                Si no desea recibir comunicaciones de este tipo, puede ignorar este mensaje.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
