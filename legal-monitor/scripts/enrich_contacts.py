@@ -109,14 +109,7 @@ def enrich_record(record: dict[str, Any], db_index: dict[str, Any]) -> dict[str,
     match = db_index.get(key)
     all_emails = match["emails"] if match else []
     source_labels = match["source_labels"] if match else []
-    source_emails = match["source_emails"] if match else {}
     found_cc = bool(match)
-
-    # Compatibilidad hacia atrás con columnas existentes.
-    # Ya no provienen de archivos 2023/2025; se conserva el shape para exports/reportes.
-    legacy_sources = sorted(source_labels)
-    legacy_email_primary = ", ".join(source_emails.get(legacy_sources[0], [])) if legacy_sources else None
-    legacy_email_secondary = ", ".join(source_emails.get(legacy_sources[1], [])) if len(legacy_sources) > 1 else None
 
     return {
         **record,
@@ -124,10 +117,6 @@ def enrich_record(record: dict[str, Any], db_index: dict[str, Any]) -> dict[str,
         "match_db": bool(all_emails),
         "email_db": ", ".join(all_emails) if all_emails else None,
         "source_labels": source_labels,
-        "match_2023": bool(legacy_email_primary),
-        "email_2023": legacy_email_primary,
-        "match_2025": bool(legacy_email_secondary),
-        "email_2025": legacy_email_secondary,
         "emails_encontrados": all_emails,
         "match_total": bool(all_emails),
         "demandado_normalizado_match": key,

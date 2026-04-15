@@ -170,8 +170,6 @@ REPORT_COLUMNS = [
     "emails_encontrados",
     "email_db",
     "source_labels",
-    "email_2023",
-    "email_2025",
     "draft_status",
     "draft_email_to",
     "blacklisted",
