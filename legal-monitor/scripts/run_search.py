@@ -53,6 +53,7 @@ from blacklist import BlacklistFilter
 from draft_emails import create_drafts
 from enrich_contacts import enrich_records
 from sheets_report import export_to_sheets
+from db import get_database_url
 from export_results import build_export_payload, write_export_bundle
 from matcher import decide
 from parse_pdf import parse_pdf
@@ -158,8 +159,7 @@ def run_pipeline(
     fecha_fin: str,
     despacho_ids: list[str] | None,
     output_root: Path,
-    enrich_file_2023: str | None = None,
-    enrich_file_2025: str | None = None,
+    database_url: str | None = None,
     draft_emails: bool = False,
     gog_account: str | None = None,
     draft_filter: str = "all_with_email",
@@ -290,8 +290,8 @@ def run_pipeline(
 
     logger.info("Corrida completada — %d publicaciones, %d PDFs, %d filas", publications_total, pdfs_total, len(records))
 
-    if enrich_file_2023 and enrich_file_2025:
-        records = enrich_records(records, enrich_file_2023, enrich_file_2025)
+    if database_url:
+        records = enrich_records(records, database_url=database_url)
 
     # Blacklist — último filtro antes de drafts
     _blacklist_path = PROJECT_ROOT / "config" / "blacklist.yaml"
@@ -321,7 +321,8 @@ def run_pipeline(
         "despachos_total": len(selected),
         "publications_total": publications_total,
         "pdfs_total": pdfs_total,
-        "enrichment_enabled": bool(enrich_file_2023 and enrich_file_2025),
+        "enrichment_enabled": bool(database_url),
+        "database_url_configured": bool(database_url),
         "draft_emails_enabled": draft_emails,
         "sheets_report_enabled": sheets_report,
     }
@@ -372,8 +373,7 @@ def cli() -> None:
     parser.add_argument("--fecha-fin", required=True, type=valid_date)
     parser.add_argument("--despacho-id", action="append", help="Filtra a uno o más despachos por ID exacto")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
-    parser.add_argument("--enrich-file-2023")
-    parser.add_argument("--enrich-file-2025")
+    parser.add_argument("--database-url", help="Sobrescribe DATABASE_URL para enriquecimiento en PostgreSQL")
     parser.add_argument("--draft-emails", action="store_true", help="Crear borradores Gmail para registros con email")
     parser.add_argument("--gog-account", help="Cuenta Gmail autenticada en gog")
     parser.add_argument(
@@ -393,8 +393,7 @@ def cli() -> None:
 
     # Aplicar defaults de pipeline.yaml para valores no pasados por CLI
     d = _DEFAULTS
-    enrich_2023 = args.enrich_file_2023 or str(PROJECT_ROOT / d.get("enrich_file_2023", ""))
-    enrich_2025 = args.enrich_file_2025 or str(PROJECT_ROOT / d.get("enrich_file_2025", ""))
+    database_url = args.database_url or d.get("database_url") or get_database_url()
     draft_emails = args.draft_emails or bool(d.get("draft_emails", False))
     gog_account = args.gog_account or d.get("gog_account")
     draft_filter = args.draft_filter if args.draft_filter != "all_with_email" else d.get("draft_filter", "all_with_email")
@@ -412,8 +411,7 @@ def cli() -> None:
         fecha_fin=args.fecha_fin,
         despacho_ids=args.despacho_id,
         output_root=Path(args.output_root),
-        enrich_file_2023=enrich_2023 or None,
-        enrich_file_2025=enrich_2025 or None,
+        database_url=database_url,
         draft_emails=draft_emails,
         gog_account=gog_account,
         draft_filter=draft_filter,

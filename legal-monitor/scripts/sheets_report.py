@@ -168,6 +168,8 @@ REPORT_COLUMNS = [
     "revision_manual",
     "match_total",
     "emails_encontrados",
+    "email_db",
+    "source_labels",
     "email_2023",
     "email_2025",
     "draft_status",
