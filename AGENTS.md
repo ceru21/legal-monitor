@@ -121,6 +121,15 @@ Reactions are lightweight social signals. Humans use them constantly — they sa
 
 Skills provide your tools. When you need one, check its `SKILL.md`. Keep local notes (camera names, SSH details, voice preferences) in `TOOLS.md`.
 
+### Legal Monitor execution rule
+
+When running the Legal Monitor pipeline, prefer the wrapper script instead of invoking Python directly.
+
+- Workspace root project: `./ops/run_search.sh`
+- Nested project copy: `./legal-monitor/ops/run_search.sh`
+
+If both exist, prefer the wrapper inside the project you are actively operating on. Do not guess Python paths or improvise alternate entrypoints before checking these wrappers first.
+
 **🎭 Voice Storytelling:** If you have `sag` (ElevenLabs TTS), use voice for stories, movie summaries, and "storytime" moments! Way more engaging than walls of text. Surprise people with funny voices.
 
 **📝 Platform Formatting:**
