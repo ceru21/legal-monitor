@@ -102,14 +102,13 @@ no entran como positivos limpios; van a `review` o se descartan.
 ### 7. Enriquecimiento por base externa
 - archivo: `scripts/enrich_contacts.py`
 - cruza **solo contra el demandado**
-- usa dos archivos fuente:
-  - `input/ANTIOQUIA_2023.TXT`
-  - `input/ANTIOQUIA_2025.TXT`
+- consulta PostgreSQL sobre la tabla `contacts`
+- usa `contacts.razon_social_normalizada` para el match
+- toma `correo_comercial` y `source_label`
 - agrega:
-  - `match_2023`
-  - `email_2023`
-  - `match_2025`
-  - `email_2025`
+  - `match_db`
+  - `email_db`
+  - `source_labels`
   - `emails_encontrados`
   - `match_total`
 
@@ -125,9 +124,10 @@ no entran como positivos limpios; van a `review` o se descartan.
 ### Proyecto
 - `/root/.openclaw/workspace/legal-monitor/`
 
-### Inputs de Cámara de Comercio
-- `/root/.openclaw/workspace/legal-monitor/input/ANTIOQUIA_2023.TXT`
-- `/root/.openclaw/workspace/legal-monitor/input/ANTIOQUIA_2025.TXT`
+### Fuente de Cámara de Comercio
+- PostgreSQL (`contacts`)
+- conexión por `DATABASE_URL`
+- dump semilla disponible en `legal-monitor/bd/seed_contacts.sql.gz`
 
 ### Corridas
 - `/root/.openclaw/workspace/legal-monitor/data/runs/`
@@ -152,15 +152,14 @@ python scripts/run_search.py \
   --despacho-id 050013103012
 ```
 
-### Corrida con enriquecimiento
+### Corrida con enriquecimiento en PostgreSQL
 ```bash
 cd /root/.openclaw/workspace/legal-monitor
 source .venv/bin/activate
+export DATABASE_URL='postgresql://legal_monitor:<PASSWORD>@localhost:5432/legal_monitor'
 python scripts/run_search.py \
   --fecha-inicio 2026-03-19 \
-  --fecha-fin 2026-03-20 \
-  --enrich-file-2023 input/ANTIOQUIA_2023.TXT \
-  --enrich-file-2025 input/ANTIOQUIA_2025.TXT
+  --fecha-fin 2026-03-20
 ```
 
 ### Limpieza manual
@@ -219,7 +218,7 @@ Para el rango `2026-03-17` a `2026-03-20`:
 - 84 PDFs procesados
 - 1030 registros extraídos
 - 481 registros relevantes
-- 90 registros relevantes con email en las bases 2023/2025
+- 90 registros relevantes con email en la fuente externa de contactos (hoy migrada a PostgreSQL)
 
 ---
 
@@ -227,18 +226,15 @@ Para el rango `2026-03-17` a `2026-03-20`:
 El enriquecimiento se hace **solo por demandado**.
 
 Campos agregados:
-- `match_2023`
-- `email_2023`
-- `match_2025`
-- `email_2025`
+- `match_db`
+- `email_db`
+- `source_labels`
 - `emails_encontrados`
 - `match_total`
 
 La semántica es:
-- `email_2023` = email encontrado en el archivo base 2023
-- `email_2025` = email encontrado en el archivo base 2025
-
-No significa “año del email”, sino “fuente donde apareció”.
+- `email_db` = email(s) encontrados en PostgreSQL
+- `source_labels` = etiquetas de origen presentes en `contacts.source_label`
 
 ---
 

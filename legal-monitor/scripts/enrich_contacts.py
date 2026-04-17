@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
+from collections import defaultdict
 from pathlib import Path
 import sys
 from typing import Any
@@ -12,6 +12,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+from db import get_connection
 from utils import normalize_text, write_csv, write_json
 
 CORP_SUFFIXES = [
@@ -46,74 +47,104 @@ def split_emails(raw: str | None) -> list[str]:
     return seen
 
 
-def load_contact_index(path: str | Path) -> dict[str, dict[str, Any]]:
-    path = Path(path)
+def _chunked(values: list[str], size: int = 500) -> list[list[str]]:
+    return [values[i:i + size] for i in range(0, len(values), size)]
+
+
+def load_contact_index_from_db(names: list[str], database_url: str | None = None) -> dict[str, dict[str, Any]]:
+    normalized_names = []
+    seen = set()
+    for name in names:
+        normalized = normalize_company_name(name)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            normalized_names.append(normalized)
+
     index: dict[str, dict[str, Any]] = {}
-    with path.open("r", encoding="latin-1", newline="") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            normalized = normalize_company_name(row.get("razon_social"))
-            if not normalized:
-                continue
-            entry = index.setdefault(normalized, {"rows": [], "emails": []})
-            entry["rows"].append(row)
-            for email in split_emails(row.get("correo_comercial")):
-                if email not in entry["emails"]:
-                    entry["emails"].append(email)
+    if not normalized_names:
+        return index
+
+    query = """
+        SELECT razon_social_normalizada, razon_social, correo_comercial, source_label, raw_data
+        FROM contacts
+        WHERE razon_social_normalizada = ANY(%s)
+    """
+
+    with get_connection(database_url) as conn:
+        with conn.cursor() as cur:
+            for batch in _chunked(normalized_names):
+                cur.execute(query, (batch,))
+                for razon_social_normalizada, razon_social, correo_comercial, source_label, raw_data in cur.fetchall():
+                    entry = index.setdefault(
+                        razon_social_normalizada,
+                        {
+                            "rows": [],
+                            "emails": [],
+                            "source_labels": [],
+                            "source_emails": defaultdict(list),
+                        },
+                    )
+                    entry["rows"].append(
+                        {
+                            "razon_social": razon_social,
+                            "correo_comercial": correo_comercial,
+                            "source_label": source_label,
+                            "raw_data": raw_data,
+                        }
+                    )
+                    if source_label and source_label not in entry["source_labels"]:
+                        entry["source_labels"].append(source_label)
+                    for email in split_emails(correo_comercial):
+                        if email not in entry["emails"]:
+                            entry["emails"].append(email)
+                        if source_label and email not in entry["source_emails"][source_label]:
+                            entry["source_emails"][source_label].append(email)
+
     return index
 
 
-def enrich_record(record: dict[str, Any], idx2023: dict[str, Any], idx2025: dict[str, Any]) -> dict[str, Any]:
+def enrich_record(record: dict[str, Any], db_index: dict[str, Any]) -> dict[str, Any]:
     demandado = record.get("demandado")
     key = normalize_company_name(demandado)
-    m2023 = idx2023.get(key)
-    m2025 = idx2025.get(key)
-    emails_2023 = m2023["emails"] if m2023 else []
-    emails_2025 = m2025["emails"] if m2025 else []
-    all_emails = []
-    for email in emails_2023 + emails_2025:
-        if email not in all_emails:
-            all_emails.append(email)
-    # found_cc = True si la empresa aparece en el directorio CC aunque no tenga email
-    found_cc = bool(m2023 or m2025)
+    match = db_index.get(key)
+    all_emails = match["emails"] if match else []
+    source_labels = match["source_labels"] if match else []
+    found_cc = bool(match)
+
     return {
         **record,
         "found_cc": found_cc,
-        "match_2023": bool(emails_2023),
-        "email_2023": ", ".join(emails_2023) if emails_2023 else None,
-        "match_2025": bool(emails_2025),
-        "email_2025": ", ".join(emails_2025) if emails_2025 else None,
+        "match_db": bool(all_emails),
+        "email_db": ", ".join(all_emails) if all_emails else None,
+        "source_labels": source_labels,
         "emails_encontrados": all_emails,
         "match_total": bool(all_emails),
         "demandado_normalizado_match": key,
     }
 
 
-def enrich_records(records: list[dict[str, Any]], file_2023: str | Path, file_2025: str | Path) -> list[dict[str, Any]]:
-    idx2023 = load_contact_index(file_2023)
-    idx2025 = load_contact_index(file_2025)
-    return [enrich_record(record, idx2023, idx2025) for record in records]
+def enrich_records(records: list[dict[str, Any]], database_url: str | None = None) -> list[dict[str, Any]]:
+    db_index = load_contact_index_from_db([record.get("demandado", "") for record in records], database_url=database_url)
+    return [enrich_record(record, db_index) for record in records]
 
 
 def cli() -> None:
-    parser = argparse.ArgumentParser(description="Enriquece registros operativos con correos de archivos 2023/2025")
+    parser = argparse.ArgumentParser(description="Enriquece registros operativos con correos desde PostgreSQL")
     parser.add_argument("records_json", help="Archivo JSON de registros operativos")
-    parser.add_argument("--file-2023", required=True)
-    parser.add_argument("--file-2025", required=True)
+    parser.add_argument("--database-url", help="Sobrescribe DATABASE_URL para la consulta")
     parser.add_argument("--out-json", required=True)
     parser.add_argument("--out-csv")
     args = parser.parse_args()
 
     records = json.loads(Path(args.records_json).read_text(encoding="utf-8"))
-    enriched = enrich_records(records, args.file_2023, args.file_2025)
+    enriched = enrich_records(records, database_url=args.database_url)
     write_json(args.out_json, enriched)
     if args.out_csv:
         write_csv(args.out_csv, enriched)
     print(json.dumps({
         "records": len(enriched),
         "match_total": sum(1 for row in enriched if row.get("match_total")),
-        "match_2023": sum(1 for row in enriched if row.get("match_2023")),
-        "match_2025": sum(1 for row in enriched if row.get("match_2025")),
+        "match_db": sum(1 for row in enriched if row.get("match_db")),
         "out_json": args.out_json,
         "out_csv": args.out_csv,
     }, ensure_ascii=False, indent=2))

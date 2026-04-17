@@ -23,8 +23,8 @@ output:
 
 # Defaults para ejecución completa — se usan cuando no se pasan por CLI
 defaults:
-  enrich_file_2023: input/ANTIOQUIA_2023.TXT
-  enrich_file_2025: input/ANTIOQUIA_2025.TXT
+  # Si no se pasa por CLI, usa DATABASE_URL o el default local del helper de DB.
+  database_url: ""
   draft_emails: true
   gog_account: mdetech01@gmail.com
   draft_filter: all_with_email

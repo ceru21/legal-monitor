@@ -1,0 +1,1 @@
+/root/.nvm/versions/node/v22.22.1/lib/node_modules/openclaw/skills/gog/SKILL.md
