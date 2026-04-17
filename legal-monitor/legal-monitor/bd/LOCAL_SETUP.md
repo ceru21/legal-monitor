@@ -40,7 +40,7 @@ cp .env.example .env
 
 - [ ] Editar `.env` con credenciales fuertes de producción
 - [ ] Verificar mínimo estas variables:
-  - [ ] `DATABASE_URL=postgresql://legal_monitor:<PASSWORD_FUERTE>@localhost:5432/legal_monitor`
+  - [ ] `DATABASE_URL=postgresql://legal_monitor:<PASSWORD_FUERTE>@127.0.0.1:5432/legal_monitor`
   - [ ] `POSTGRES_PASSWORD=<PASSWORD_FUERTE>`
   - [ ] `POSTGRES_USER=legal_monitor` (si aplica)
   - [ ] `POSTGRES_DB=legal_monitor` (si aplica)

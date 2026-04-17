@@ -156,7 +156,7 @@ python scripts/run_search.py \
 ```bash
 cd /root/.openclaw/workspace/legal-monitor
 source .venv/bin/activate
-export DATABASE_URL='postgresql://legal_monitor:<PASSWORD>@localhost:5432/legal_monitor'
+export DATABASE_URL='postgresql://legal_monitor:<PASSWORD>@127.0.0.1:5432/legal_monitor'
 python scripts/run_search.py \
   --fecha-inicio 2026-03-19 \
   --fecha-fin 2026-03-20

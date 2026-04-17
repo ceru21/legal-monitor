@@ -8,7 +8,7 @@ import psycopg2
 from psycopg2.extensions import connection as PGConnection
 
 
-DEFAULT_DATABASE_URL = "postgresql://legal_monitor:legal_monitor@localhost:5432/legal_monitor"
+DEFAULT_DATABASE_URL = "postgresql://legal_monitor:legal_monitor@127.0.0.1:5432/legal_monitor"
 
 
 def get_database_url(explicit_url: str | None = None) -> str:

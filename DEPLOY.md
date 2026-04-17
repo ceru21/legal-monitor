@@ -64,7 +64,7 @@ nano .env   # o vim .env
 Contenido mínimo para producción:
 
 ```env
-DATABASE_URL=postgresql://legal_monitor:<PASSWORD_FUERTE>@localhost:5432/legal_monitor
+DATABASE_URL=postgresql://legal_monitor:<PASSWORD_FUERTE>@127.0.0.1:5432/legal_monitor
 POSTGRES_PASSWORD=<PASSWORD_FUERTE>
 ```
 
